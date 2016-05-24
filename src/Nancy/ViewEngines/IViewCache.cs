@@ -1,6 +1,7 @@
 ﻿namespace Nancy.ViewEngines
 {
     using System;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Defines the functionality of a Nancy view cache.
@@ -14,6 +15,6 @@
         /// <param name="viewLocationResult">A <see cref="ViewLocationResult"/> instance that describes the view that is being added or retrieved from the cache.</param>
         /// <param name="valueFactory">A function that produces the value that should be added to the cache in case it does not already exist.</param>
         /// <returns>An instance of the type specified by the <typeparamref name="TCompiledView"/> type.</returns>
-        TCompiledView GetOrAdd<TCompiledView>(ViewLocationResult viewLocationResult, Func<ViewLocationResult, TCompiledView> valueFactory);
+        Task<TCompiledView> GetOrAdd<TCompiledView>(ViewLocationResult viewLocationResult, Func<ViewLocationResult, Task<TCompiledView>> valueFactory);
     }
 }

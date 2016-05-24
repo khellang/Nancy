@@ -4,6 +4,7 @@ namespace Nancy.ErrorHandling
     using System.IO;
     using System.Linq;
     using System.Text;
+    using System.Threading.Tasks;
     using Nancy.Configuration;
     using Nancy.Extensions;
     using Nancy.IO;
@@ -63,7 +64,7 @@ namespace Nancy.ErrorHandling
         /// <param name="statusCode">Status code</param>
         /// <param name="context">The <see cref="NancyContext"/> instance of the current request.</param>
         /// <returns>Nancy Response</returns>
-        public void Handle(HttpStatusCode statusCode, NancyContext context)
+        public async Task Handle(HttpStatusCode statusCode, NancyContext context)
         {
             if (context.Response != null && context.Response.Contents != null && !ReferenceEquals(context.Response.Contents, Response.NoBody))
             {
@@ -89,7 +90,7 @@ namespace Nancy.ErrorHandling
             var result = new DefaultStatusCodeHandlerResult(statusCode, this.errorMessages[statusCode], !this.configuration.DisplayErrorTraces ? DisplayErrorTracesFalseMessage : context.GetExceptionDetails());
             try
             {
-                context.Response = this.responseNegotiator.NegotiateResponse(result, context);
+                context.Response = await this.responseNegotiator.NegotiateResponse(result, context);
                 context.Response.StatusCode = statusCode;
 
                 if (existingResponse != null)
@@ -122,11 +123,11 @@ namespace Nancy.ErrorHandling
             }
 
             context.Response.ContentType = "text/html";
-            context.Response.Contents = s =>
+            context.Response.Contents = async (s, ct) =>
             {
                 using (var writer = new StreamWriter(new UnclosableStreamWrapper(s), Encoding.UTF8))
                 {
-                    writer.Write(contents);
+                    await writer.WriteAsync(contents);
                 }
             };
         }

@@ -608,7 +608,7 @@ namespace Nancy.Tests.Unit
 
     public class PreExecuteFailureResponse : Response
     {
-        public override Task PreExecute(NancyContext context)
+        public override Task PreExecute(NancyContext context, CancellationToken cancellationToken)
         {
             return TaskHelpers.GetFaultedTask<object>(new InvalidOperationException());
         }

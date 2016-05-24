@@ -650,7 +650,7 @@ namespace Nancy.Tests.Functional.Tests
             var browser = new Browser(with => with.Module<NegotiationModule>());
 
             // When
-            var result = await RecordAsync.Exception(() => browser.Get("/invalid-view-name"));
+            var result = await Record.ExceptionAsync(async () => await browser.Get("/invalid-view-name"));
 
             // Then
             Assert.True(result.ToString().Contains("Unable to locate view"));
@@ -785,7 +785,7 @@ namespace Nancy.Tests.Functional.Tests
                 }
             }
 
-            public ProcessorMatch CanProcess(MediaRange requestedMediaRange, dynamic model, NancyContext context)
+            public ProcessorMatch CanProcess(MediaRange requestedMediaRange, object model, NancyContext context)
             {
                 return new ProcessorMatch
                 {
@@ -794,9 +794,9 @@ namespace Nancy.Tests.Functional.Tests
                 };
             }
 
-            public Response Process(MediaRange requestedMediaRange, dynamic model, NancyContext context)
+            public Task<Response> Process(MediaRange requestedMediaRange, object model, NancyContext context)
             {
-                return string.Format(ResponseTemplate, requestedMediaRange, model == null ? "None" : model.GetType());
+                return Task.FromResult<Response>(string.Format(ResponseTemplate, requestedMediaRange, model == null ? "None" : model.GetType().ToString()));
             }
         }
 
@@ -810,7 +810,7 @@ namespace Nancy.Tests.Functional.Tests
                 }
             }
 
-            public ProcessorMatch CanProcess(MediaRange requestedMediaRange, dynamic model, NancyContext context)
+            public ProcessorMatch CanProcess(MediaRange requestedMediaRange, object model, NancyContext context)
             {
                 return new ProcessorMatch
                 {
@@ -819,7 +819,7 @@ namespace Nancy.Tests.Functional.Tests
                 };
             }
 
-            public Response Process(MediaRange requestedMediaRange, dynamic model, NancyContext context)
+            public Task<Response> Process(MediaRange requestedMediaRange, object model, NancyContext context)
             {
                 return null;
             }
@@ -835,7 +835,7 @@ namespace Nancy.Tests.Functional.Tests
                 }
             }
 
-            public ProcessorMatch CanProcess(MediaRange requestedMediaRange, dynamic model, NancyContext context)
+            public ProcessorMatch CanProcess(MediaRange requestedMediaRange, object model, NancyContext context)
             {
                 return new ProcessorMatch
                 {
@@ -844,9 +844,9 @@ namespace Nancy.Tests.Functional.Tests
                 };
             }
 
-            public Response Process(MediaRange requestedMediaRange, dynamic model, NancyContext context)
+            public Task<Response> Process(MediaRange requestedMediaRange, object model, NancyContext context)
             {
-                return (string)model;
+                return Task.FromResult<Response>((string) model);
             }
         }
 
@@ -891,7 +891,7 @@ namespace Nancy.Tests.Functional.Tests
                 return statusCode == HttpStatusCode.NotFound;
             }
 
-            public void Handle(HttpStatusCode statusCode, NancyContext context)
+            public async Task Handle(HttpStatusCode statusCode, NancyContext context)
             {
                 var error = new NotFoundStatusCodeHandlerResult
                 {
@@ -899,7 +899,7 @@ namespace Nancy.Tests.Functional.Tests
                     Message = "Not Found."
                 };
 
-                context.Response = this.responseNegotiator.NegotiateResponse(error, context);
+                context.Response = await this.responseNegotiator.NegotiateResponse(error, context);
             }
         }
 

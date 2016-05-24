@@ -52,14 +52,14 @@
                     s => templateName.EndsWith(s, StringComparison.OrdinalIgnoreCase)))
                 {
                     // The template name does end with a valid extension, just try to find it
-                    viewLocation = renderContext.LocateView(templateName, null);
+                    viewLocation = renderContext.LocateView(templateName, null).Result;
                 }
                 else
                 {
                     // The template name does not end with a valid extension, try all the possibilities
                     foreach (string extension in extensions)
                     {
-                        viewLocation = renderContext.LocateView(String.Concat(templateName, ".", extension), null);
+                        viewLocation = renderContext.LocateView(String.Concat(templateName, ".", extension), null).Result;
                         if (viewLocation != null) break;
                     }
                 }
@@ -70,7 +70,9 @@
                 if (viewLocation != null)
                 {
                     using (var reader = viewLocation.Contents.Invoke())
+                    {
                         return reader.ReadToEnd();
+                    }
                 }
             }
             throw new FileSystemException("Template file {0} not found", new[] { templateName });

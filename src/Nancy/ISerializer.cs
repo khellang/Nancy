@@ -2,6 +2,8 @@
 {
     using System.Collections.Generic;
     using System.IO;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Responses.Negotiation;
 
     /// <summary>
@@ -29,6 +31,6 @@
         /// <param name="model">Model to serialize</param>
         /// <param name="outputStream">Output stream to serialize to</param>
         /// <returns>Serialised object</returns>
-        void Serialize<TModel>(MediaRange mediaRange, TModel model, Stream outputStream);
+        Task Serialize<TModel>(MediaRange mediaRange, TModel model, Stream outputStream, CancellationToken cancellationToken);
     }
 }

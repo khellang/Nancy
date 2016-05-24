@@ -2,7 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
-
+    using System.Threading.Tasks;
     using Nancy.Extensions;
     using Nancy.Helpers;
     using Nancy.Localization;
@@ -99,7 +99,7 @@
         /// <param name="viewName">The name of the view that should be located.</param>
         /// <param name="model">The model that should be used when locating the view.</param>
         /// <returns>A <see cref="ViewLocationResult"/> instance if the view could be located; otherwise, <see langword="null"/>.</returns>
-        public ViewLocationResult LocateView(string viewName, dynamic model)
+        public Task<ViewLocationResult> LocateView(string viewName, object model)
         {
             return this.viewResolver.GetViewLocation(viewName, model, this.viewLocationContext);
         }

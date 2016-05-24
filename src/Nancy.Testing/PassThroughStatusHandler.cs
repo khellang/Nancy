@@ -1,7 +1,7 @@
 namespace Nancy.Testing
 {
     using System;
-
+    using System.Threading.Tasks;
     using Nancy.ErrorHandling;
     using Nancy.Extensions;
 
@@ -18,7 +18,7 @@ namespace Nancy.Testing
             return statusCode == HttpStatusCode.InternalServerError;
         }
 
-        public void Handle(HttpStatusCode statusCode, NancyContext context)
+        public Task Handle(HttpStatusCode statusCode, NancyContext context)
         {
             throw new Exception("ConfigurableBootstrapper Exception", context.GetException());
         }

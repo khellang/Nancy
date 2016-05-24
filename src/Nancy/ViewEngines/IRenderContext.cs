@@ -1,7 +1,7 @@
 namespace Nancy.ViewEngines
 {
     using System.Collections.Generic;
-
+    using System.Threading.Tasks;
     using Nancy.Localization;
 
     /// <summary>
@@ -52,7 +52,7 @@ namespace Nancy.ViewEngines
         /// <param name="viewName">The name of the view that should be located.</param>
         /// <param name="model">The model that should be used when locating the view.</param>
         /// <returns>A <see cref="ViewLocationResult"/> instance if the view could be located; otherwise, <see langword="null"/>.</returns>
-        ViewLocationResult LocateView(string viewName, dynamic model);
+        Task<ViewLocationResult> LocateView(string viewName, object model);
 
         /// <summary>
         /// Gets the current Csrf token.

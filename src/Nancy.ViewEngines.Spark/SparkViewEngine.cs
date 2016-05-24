@@ -4,6 +4,7 @@
     using System.Configuration;
     using System.Dynamic;
     using System.IO;
+    using System.Threading.Tasks;
     using Configuration;
     using global::Spark;
     using global::Spark.FileSystem;
@@ -50,9 +51,9 @@
             get { return this.extensions; }
         }
 
-        private SparkViewEngineResult CreateView<TModel>(ViewLocationResult viewLocationResult, TModel model, IRenderContext renderContext)
+        private async Task<SparkViewEngineResult> CreateView<TModel>(ViewLocationResult viewLocationResult, TModel model, IRenderContext renderContext)
         {
-            var result = this.LocateView(
+            var result = await this.LocateView(
                 viewLocationResult.Location,
                 viewLocationResult.Name,
                 viewLocationResult,
@@ -73,7 +74,7 @@
             return new NancyViewFolder(viewLocationResults, environment);
         }
 
-        private SparkViewEngineResult LocateView(string viewPath, string viewName, ViewLocationResult viewLocationResult, IRenderContext renderContext)
+        private async Task<SparkViewEngineResult> LocateView(string viewPath, string viewName, ViewLocationResult viewLocationResult, IRenderContext renderContext)
         {
             var searchedLocations = new List<string>();
 
@@ -93,9 +94,9 @@
                 return new SparkViewEngineResult(searchedLocations);
             }
 
-            var entry = renderContext.ViewCache.GetOrAdd(
+            var entry = await renderContext.ViewCache.GetOrAdd(
                 viewLocationResult,
-                x => this.engine.CreateEntry(descriptor));
+                x => Task.FromResult(this.engine.CreateEntry(descriptor)));
 
             var nancySparkView = entry.CreateInstance() as NancySparkView;
             if (nancySparkView != null)
@@ -122,24 +123,23 @@
         /// <param name="model">The model that should be passed into the view</param>
         /// <param name="renderContext"></param>
         /// <returns>A response</returns>
-        public Response RenderView(ViewLocationResult viewLocationResult, dynamic model, IRenderContext renderContext)
+        public Task<Response> RenderView(ViewLocationResult viewLocationResult, object model, IRenderContext renderContext)
         {
-            return new HtmlResponse(contents: stream =>
+            return Task.FromResult<Response>(new HtmlResponse(contents: async (stream, ct) =>
             {
                 var sparkRenderConext = new SparkRenderContextWrapper(renderContext, engine);
 
                 SparkViewEngineResult sparkViewEngineResult =
-                    this.CreateView(viewLocationResult, model ?? new ExpandoObject(), sparkRenderConext);
+                    await this.CreateView(viewLocationResult, model ?? new ExpandoObject(), sparkRenderConext);
 
-                var writer =
-                    new StreamWriter(stream);
+                var writer = new StreamWriter(stream);
 
                 sparkViewEngineResult.View.Writer = writer;
                 sparkViewEngineResult.View.Model = model;
                 sparkViewEngineResult.View.Execute();
 
-                writer.Flush();
-            });
+                await writer.FlushAsync();
+            }));
         }
     }
 }

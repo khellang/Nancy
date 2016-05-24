@@ -89,7 +89,7 @@
                 return Enumerable.Empty<ViewLocationResult>();
             }
 
-            if (resourceStreams.Count() == 1 && !RootNamespaces.ContainsKey(assembly))
+            if (resourceStreams.Count == 1 && !RootNamespaces.ContainsKey(assembly))
             {
                 var errorMessage =
                     string.Format("Only one view was found in assembly {0}, but no rootnamespace had been registered.", assembly.FullName);
@@ -165,7 +165,7 @@
                 resourceName.Split(new[] { "." }, StringSplitOptions.RemoveEmptyEntries);
 
             var segmentCount =
-                nameSegments.Count();
+                nameSegments.Length;
 
             return (segmentCount < 2) ?
                 string.Empty :

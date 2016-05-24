@@ -3,6 +3,8 @@
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Configuration;
     using FakeItEasy;
 
@@ -32,11 +34,11 @@
             this.engineCSharp = new DotLiquidViewEngine(this.factory, new CSharpNamingConvention());
 
             var cache = A.Fake<IViewCache>();
-            A.CallTo(() => cache.GetOrAdd(A<ViewLocationResult>.Ignored, A<Func<ViewLocationResult, Template>>.Ignored))
+            A.CallTo(() => cache.GetOrAdd(A<ViewLocationResult>.Ignored, A<Func<ViewLocationResult, Task<Template>>>.Ignored))
                 .ReturnsLazily(x =>
                 {
                     var result = x.GetArgument<ViewLocationResult>(0);
-                    return x.GetArgument<Func<ViewLocationResult, Template>>(1).Invoke(result);
+                    return Task.FromResult(x.GetArgument<Func<ViewLocationResult, Template>>(1).Invoke(result));
                 });
             var context = new NancyContext();
 
@@ -71,7 +73,7 @@
         }
 
         [Fact]
-        public void RenderView_should_render_to_stream()
+        public async Task RenderView_should_render_to_stream()
         {
             // Given
             var location = new ViewLocationResult(
@@ -89,22 +91,22 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<h1>Hello Mr. test</h1>");
         }
 
         [Fact]
-        public void RenderView_with_uppercase_filter_should_return_uppercase_string()
+        public async Task RenderView_with_uppercase_filter_should_return_uppercase_string()
         {
             // Given
             var location = new ViewLocationResult(
                 string.Empty,
                 string.Empty,
                 "liquid",
-                () => new StringReader(@"{% assign name = 'Test' %}<h1>Hello Mr. {{ name | upcase }}</h1>")
+                () =>new StringReader(@"{% assign name = 'Test' %}<h1>Hello Mr. {{ name | upcase }}</h1>")
             );
 
             var currentStartupContext =
@@ -115,15 +117,15 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<h1>Hello Mr. TEST</h1>");
         }
 
         [Fact]
-        public void RenderView_with_lowercase_filter_should_return_lowercase_string()
+        public async Task RenderView_with_lowercase_filter_should_return_lowercase_string()
         {
             // Given
             var location = new ViewLocationResult(
@@ -141,15 +143,15 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<h1>Hello Mr. test</h1>");
         }
 
         [Fact]
-        public void RenderView_with_uppercase_filter_should_return_uppercase_string_using_csharp_convention()
+        public async Task RenderView_with_uppercase_filter_should_return_uppercase_string_using_csharp_convention()
         {
             // Given
             var location = new ViewLocationResult(
@@ -167,15 +169,15 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<h1>Hello Mr. TEST</h1>");
         }
 
         [Fact]
-        public void RenderView_with_lowercase_filter_should_return_lowercase_string_using_csharp_convention()
+        public async Task RenderView_with_lowercase_filter_should_return_lowercase_string_using_csharp_convention()
         {
             // Given
             var location = new ViewLocationResult(
@@ -193,15 +195,15 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<h1>Hello Mr. test</h1>");
         }
 
         [Fact]
-        public void When_passing_a_null_model_should_return_an_empty_string()
+        public async Task When_passing_a_null_model_should_return_an_empty_string()
         {
             // Given
             var location = new ViewLocationResult(
@@ -219,15 +221,15 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<h1>Hello Mr. </h1>");
         }
 
         [Fact]
-        public void RenderView_should_accept_a_model_and_read_from_it_into_the_stream()
+        public async Task RenderView_should_accept_a_model_and_read_from_it_into_the_stream()
         {
             // Given
             var location = new ViewLocationResult(
@@ -244,15 +246,15 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, new { name = "test" }, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, new { name = "test" }, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<h1>Hello Mr. test</h1>");
         }
 
         [Fact]
-        public void RenderView_should_expose_ViewBag_to_the_template()
+        public async Task RenderView_should_expose_ViewBag_to_the_template()
         {
             // Given
             var location = new ViewLocationResult(
@@ -270,15 +272,15 @@
             this.renderContext.Context.ViewBag.Name = "test";
 
             // When
-            var response = this.engine.RenderView(location, new { name = "incorrect" }, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, new { name = "incorrect" }, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<h1>Hello Mr. test</h1>");
         }
 
         [Fact]
-        public void when_calling_a_missing_member_should_return_an_empty_string()
+        public async Task when_calling_a_missing_member_should_return_an_empty_string()
         {
             // Given
             var location = new ViewLocationResult(
@@ -295,15 +297,15 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, new { lastname = "test" }, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, new { lastname = "test" }, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<h1>Hello Mr. </h1>");
         }
 
         [Fact]
-        public void Syntax_errors_should_return_500()
+        public async Task Syntax_errors_should_return_500()
         {
             // Given
             var location = new ViewLocationResult(
@@ -320,15 +322,15 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             response.StatusCode.ShouldEqual(HttpStatusCode.InternalServerError);
         }
 
         [Fact]
-        public void When_rendering_model_inheriting_drop_should_preserve_camel_case()
+        public async Task When_rendering_model_inheriting_drop_should_preserve_camel_case()
         {
             // Writing the test name in snake_case is slightly ironic, no?
 
@@ -348,15 +350,15 @@
 
             // When
             var dropModel = new DropModel() { CamelCase = "Hello Jamie!" };
-            var response = this.engine.RenderView(location, dropModel, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, dropModel, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("Hello Jamie!");
         }
 
         [Fact]
-        public void RenderView_should_accept_a_model_with_a_list_and_iterate_over_it()
+        public async Task RenderView_should_accept_a_model_with_a_list_and_iterate_over_it()
         {
             // Given
             var location = new ViewLocationResult(
@@ -381,8 +383,8 @@
             var menu = new Magazine() { Items = articles };
 
             // When
-            var response = this.engine.RenderView(location, menu, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, menu, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<ul><li>Hello</li><li>Jamie!</li><li>You're fun!</li></ul>");

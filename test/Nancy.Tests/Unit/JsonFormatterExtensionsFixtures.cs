@@ -2,7 +2,8 @@ namespace Nancy.Tests.Unit
 {
     using System.IO;
     using System.Text;
-
+    using System.Threading;
+    using System.Threading.Tasks;
     using FakeItEasy;
     using Nancy.Configuration;
     using Nancy.Json;
@@ -33,44 +34,44 @@ namespace Nancy.Tests.Unit
         [Fact]
         public void Should_return_a_response_with_the_standard_json_content_type()
         {
-            response.ContentType.ShouldEqual("application/json; charset=utf-8");
+            this.response.ContentType.ShouldEqual("application/json; charset=utf-8");
         }
 
         [Fact]
         public void Should_return_a_response_with_status_code_200_OK()
         {
-            response.StatusCode.ShouldEqual(HttpStatusCode.OK);
+            this.response.StatusCode.ShouldEqual(HttpStatusCode.OK);
         }
 
         [Fact]
-        public void Should_return_a_valid_model_in_json_format()
+        public async Task Should_return_a_valid_model_in_json_format()
         {
             using (var stream = new MemoryStream())
             {
-                response.Contents(stream);
+                await this.response.Contents(stream, CancellationToken.None);
 
                 Encoding.UTF8.GetString(stream.ToArray()).ShouldEqual("{\"firstName\":\"Andy\",\"lastName\":\"Pike\"}");
             }
         }
 
         [Fact]
-        public void Should_return_null_in_json_format()
+        public async Task Should_return_null_in_json_format()
         {
-            var nullResponse = formatter.AsJson<Person>(null);
+            var nullResponse = this.formatter.AsJson<Person>(null);
             using (var stream = new MemoryStream())
             {
-                nullResponse.Contents(stream);
+                await nullResponse.Contents(stream, CancellationToken.None);
                 Encoding.UTF8.GetString(stream.ToArray()).ShouldHaveCount(0);
             }
         }
 
         [Fact]
-        public void Json_formatter_can_deserialize_objects_of_type_Type()
+        public async Task Json_formatter_can_deserialize_objects_of_type_Type()
         {
-            var response = formatter.AsJson(new { type = typeof(string) });
+            var response = this.formatter.AsJson(new { type = typeof(string) });
             using (var stream = new MemoryStream())
             {
-                response.Contents(stream);
+                await response.Contents(stream, CancellationToken.None);
                 Encoding.UTF8.GetString(stream.ToArray()).ShouldEqual(@"{""type"":""System.String""}");
             }
         }
@@ -78,7 +79,7 @@ namespace Nancy.Tests.Unit
         [Fact]
         public void Can_set_status_on_json_response()
         {
-            var response = formatter.AsJson(new { foo = "bar" }, HttpStatusCode.InternalServerError);
+            var response = this.formatter.AsJson(new { foo = "bar" }, HttpStatusCode.InternalServerError);
             Assert.Equal(response.StatusCode, HttpStatusCode.InternalServerError);
         }
 

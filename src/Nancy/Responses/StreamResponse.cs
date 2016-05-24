@@ -2,6 +2,8 @@
 {
     using System;
     using System.IO;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Response that returns the contents of a stream of a given content-type.
@@ -18,18 +20,18 @@
         /// <param name="contentType">The content-type of the stream contents.</param>
         public StreamResponse(Func<Stream> source, string contentType)
         {
-            this.Contents = GetResponseBodyDelegate(source);
+            this.Contents = this.GetResponseBodyDelegate(source);
             this.ContentType = contentType;
             this.StatusCode = HttpStatusCode.OK;
         }
 
-        private Action<Stream> GetResponseBodyDelegate(Func<Stream> sourceDelegate)
+        private Func<Stream, CancellationToken, Task> GetResponseBodyDelegate(Func<Stream> sourceDelegate)
         {
-            return stream =>
+            return async (stream, ct) =>
             {
                 using (this.source = sourceDelegate.Invoke())
                 {
-                    this.source.CopyTo(stream);
+                    await this.source.CopyToAsync(stream);
                 }
             };
         }

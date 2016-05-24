@@ -1,7 +1,7 @@
 ﻿namespace Nancy.Tests.Unit
 {
     using System;
-
+    using System.Threading.Tasks;
     using Nancy.Cookies;
     using Nancy.Tests.Extensions;
 
@@ -10,13 +10,13 @@
     public class ResponseFixture
     {
         [Fact]
-        public void Should_set_empty_content_on_new_instance()
+        public async Task Should_set_empty_content_on_new_instance()
         {
             // Given
             var response = new Response();
 
             // When
-            var content = response.GetStringContentsFromResponse();
+            var content = await response.GetStringContentsFromResponse();
 
             // Then
             content.ShouldBeEmpty();
@@ -63,13 +63,13 @@
         }
 
         [Fact]
-        public void Should_set_empty_content_when_implicitly_cast_from_int()
+        public async Task Should_set_empty_content_when_implicitly_cast_from_int()
         {
             // Arrange
             Response response = 200;
 
             // Act
-            var output = response.GetStringContentsFromResponse();
+            var output = await response.GetStringContentsFromResponse();
 
             // Assert
             output.ShouldBeEmpty();
@@ -96,13 +96,13 @@
         }
 
         [Fact]
-        public void Should_set_empty_content_when_implicitly_cast_from_http_status_code()
+        public async Task Should_set_empty_content_when_implicitly_cast_from_http_status_code()
         {
             // Arrange
             Response response = HttpStatusCode.OK;
 
             // Act
-            var output = response.GetStringContentsFromResponse();
+            var output = await response.GetStringContentsFromResponse();
 
             // Assert
             output.ShouldBeEmpty();
@@ -130,14 +130,14 @@
         }
 
         [Fact]
-        public void Should_set_content_when_implicitly_cast_from_string()
+        public async Task Should_set_content_when_implicitly_cast_from_string()
         {
             // Given
             const string value = "test value";
             Response response = value;
 
             // When
-            var output = response.GetStringContentsFromResponse();
+            var output = await response.GetStringContentsFromResponse();
 
             // Then
             output.ShouldEqual(value);

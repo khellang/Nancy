@@ -5,6 +5,7 @@ namespace Nancy.Diagnostics
     using System.IO;
     using System.Linq;
     using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Bootstrapper;
     using Nancy.Configuration;
     using Nancy.Cookies;
@@ -60,9 +61,9 @@ namespace Nancy.Diagnostics
             var serializer = new DefaultObjectSerializer();
 
             pipelines.BeforeRequest.AddItemToStartOfPipeline(
-                new PipelineItem<Func<NancyContext, Response>>(
+                new PipelineItem<Func<NancyContext, CancellationToken, Task<Response>>>(
                     PipelineKey,
-                    ctx =>
+                    async (ctx, ct) =>
                     {
                         if (!ctx.ControlPanelEnabled)
                         {
@@ -103,8 +104,8 @@ namespace Nancy.Diagnostics
                         RewriteDiagnosticsUrl(diagnosticsConfiguration, ctx);
 
                         return ValidateConfiguration(diagnosticsConfiguration)
-                                   ? ExecuteDiagnostics(ctx, diagnosticsRouteResolver, diagnosticsConfiguration, serializer, diagnosticsEnvironment)
-                                   : new DiagnosticsViewRenderer(ctx, environment)["help"];
+                                   ? await ExecuteDiagnostics(ctx, diagnosticsRouteResolver, diagnosticsConfiguration, serializer, diagnosticsEnvironment)
+                                   : await new DiagnosticsViewRenderer(ctx, environment)["help"];
                     }));
         }
 
@@ -140,20 +141,20 @@ namespace Nancy.Diagnostics
             pipelines.BeforeRequest.RemoveByName(PipelineKey);
         }
 
-        private static Response GetDiagnosticsLoginView(NancyContext ctx, INancyEnvironment environment)
+        private static Task<Response> GetDiagnosticsLoginView(NancyContext ctx, INancyEnvironment environment)
         {
             var renderer = new DiagnosticsViewRenderer(ctx, environment);
 
             return renderer["login"];
         }
 
-        private static Response ExecuteDiagnostics(NancyContext ctx, IRouteResolver routeResolver, DiagnosticsConfiguration diagnosticsConfiguration, DefaultObjectSerializer serializer, INancyEnvironment environment)
+        private static async Task<Response> ExecuteDiagnostics(NancyContext ctx, IRouteResolver routeResolver, DiagnosticsConfiguration diagnosticsConfiguration, DefaultObjectSerializer serializer, INancyEnvironment environment)
         {
             var session = GetSession(ctx, diagnosticsConfiguration, serializer);
 
             if (session == null)
             {
-                var view = GetDiagnosticsLoginView(ctx, environment);
+                var view = await GetDiagnosticsLoginView(ctx, environment);
 
                 view.WithCookie(
                     new NancyCookie(diagnosticsConfiguration.CookieName, string.Empty, true) { Expires = DateTime.Now.AddDays(-1) });
@@ -181,7 +182,7 @@ namespace Nancy.Diagnostics
 
             if (resolveResult.After != null)
             {
-                resolveResult.After.Invoke(ctx, CancellationToken);
+                await resolveResult.After.Invoke(ctx, CancellationToken).ConfigureAwait(false);
             }
 
             AddUpdateSessionCookie(session, ctx, diagnosticsConfiguration, serializer);

@@ -1,5 +1,7 @@
 namespace Nancy.ViewEngines.SuperSimpleViewEngine
 {
+    using System.Threading.Tasks;
+
     /// <summary>
     /// Provides the view engine with utility functions for
     /// encoding, locating partial view templates etc.
@@ -25,7 +27,7 @@ namespace Nancy.ViewEngines.SuperSimpleViewEngine
         /// <param name="templateName">Name/location of the template</param>
         /// <param name="model">Model to use to locate the template via conventions</param>
         /// <returns>Contents of the template, or null if not found</returns>
-        string GetTemplate(string templateName, object model);
+        Task<string> GetTemplate(string templateName, object model);
 
         /// <summary>
         /// Gets a uri string for a named route

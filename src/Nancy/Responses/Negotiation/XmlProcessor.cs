@@ -3,6 +3,8 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Threading.Tasks;
+    using Nancy.Helpers;
 
     /// <summary>
     /// Processes the model for xml media types and extension.
@@ -74,21 +76,23 @@
         /// <param name="model">The model for the given media range.</param>
         /// <param name="context">The nancy context.</param>
         /// <returns>A <see cref="Response"/> instance.</returns>
-        public Response Process(MediaRange requestedMediaRange, dynamic model, NancyContext context)
+        public Task<Response> Process(MediaRange requestedMediaRange, dynamic model, NancyContext context)
         {
-            return CreateResponse(model, serializer);
+            return Task.FromResult(CreateResponse(model, serializer));
         }
 
         private static Response CreateResponse(dynamic model, ISerializer serializer)
         {
             return new Response
             {
-                Contents = stream =>
+                Contents = (stream, ct) =>
                 {
                     if (model != null)
                     {
-                        serializer.Serialize("application/xml", model, stream);
+                        return serializer.Serialize("application/xml", model, stream, ct);
                     }
+
+                    return TaskHelpers.CompletedTask;
                 },
                 ContentType = "application/xml",
                 StatusCode = HttpStatusCode.OK

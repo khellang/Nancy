@@ -1,7 +1,8 @@
 ﻿namespace Nancy.Tests.Unit.Responses
 {
     using System.IO;
-
+    using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Responses;
 
     using Xunit;
@@ -20,7 +21,7 @@
         }
 
         [Fact]
-        public void Should_contain_etag_in_response_header_if_embedded_resource_exists_when_invoking()
+        public async Task Should_contain_etag_in_response_header_if_embedded_resource_exists_when_invoking()
         {
             // Given
             var response =
@@ -29,7 +30,7 @@
             var outputStream = new MemoryStream();
 
             // when
-            response.Contents.Invoke(outputStream);
+            await response.Contents.Invoke(outputStream, CancellationToken.None);
 
             // Then
             response.Headers["ETag"].ShouldEqual("\"B9D9DC2B50ADFD0867749D4837C63556339080CE\"");
@@ -47,7 +48,7 @@
         }
 
         [Fact]
-        public void Should_not_contain_etag_in_response_header_if_embedded_resource_does_not_exists_when_invoking()
+        public async Task Should_not_contain_etag_in_response_header_if_embedded_resource_does_not_exists_when_invoking()
         {
             // Given
             var response =
@@ -56,7 +57,7 @@
             var outputStream = new MemoryStream();
 
             // when
-            response.Contents.Invoke(outputStream);
+            await response.Contents.Invoke(outputStream, CancellationToken.None);
 
             // Then
             response.Headers.ContainsKey("ETag").ShouldBeFalse();

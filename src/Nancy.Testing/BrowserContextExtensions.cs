@@ -6,7 +6,8 @@
     using System.IO;
     using System.Linq;
     using System.Text;
-
+    using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Authentication.Forms;
     using Nancy.Configuration;
     using Nancy.Extensions;
@@ -51,7 +52,7 @@
         /// <param name="browserContext">The <see cref="BrowserContext"/> that the data should be added to.</param>
         /// <param name="model">The model to be serialized to json.</param>
         /// <param name="serializer">Optionally opt in to using a different JSON serializer.</param>
-        public static void JsonBody<TModel>(this BrowserContext browserContext, TModel model, ISerializer serializer = null)
+        public static async Task JsonBody<TModel>(this BrowserContext browserContext, TModel model, ISerializer serializer = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (serializer == null)
             {
@@ -63,7 +64,7 @@
 
             contextValues.Body = new MemoryStream();
 
-            serializer.Serialize("application/json", model, contextValues.Body);
+            await serializer.Serialize("application/json", model, contextValues.Body, cancellationToken);
             browserContext.Header("Content-Type", "application/json");
         }
 
@@ -73,7 +74,7 @@
         /// <param name="browserContext">The <see cref="BrowserContext"/> that the data should be added to.</param>
         /// <param name="model">The model to be serialized to xml.</param>
         /// <param name="serializer">Optionally opt in to using a different XML serializer.</param>
-        public static void XMLBody<TModel>(this BrowserContext browserContext, TModel model, ISerializer serializer = null)
+        public static async Task XMLBody<TModel>(this BrowserContext browserContext, TModel model, ISerializer serializer = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (serializer == null)
             {
@@ -85,7 +86,7 @@
 
             contextValues.Body = new MemoryStream();
 
-            serializer.Serialize("application/xml", model, contextValues.Body);
+            await serializer.Serialize("application/xml", model, contextValues.Body, cancellationToken);
             browserContext.Header("Content-Type", "application/xml");
         }
 

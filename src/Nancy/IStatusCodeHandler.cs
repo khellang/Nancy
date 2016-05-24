@@ -1,5 +1,7 @@
 namespace Nancy.ErrorHandling
 {
+    using System.Threading.Tasks;
+
     /// <summary>
     /// Provides informative responses for particular HTTP status codes
     /// </summary>
@@ -18,6 +20,6 @@ namespace Nancy.ErrorHandling
         /// </summary>
         /// <param name="statusCode">Status code</param>
         /// <param name="context">Current context</param>
-        void Handle(HttpStatusCode statusCode, NancyContext context);
+        Task Handle(HttpStatusCode statusCode, NancyContext context);
     }
 }

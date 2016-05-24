@@ -1,7 +1,7 @@
 namespace Nancy.Tests.Fakes
 {
     using System;
-
+    using System.Threading.Tasks;
     using Nancy.ViewEngines.SuperSimpleViewEngine;
 
     public class FakeViewEngineHost : IViewEngineHost
@@ -59,9 +59,9 @@ namespace Nancy.Tests.Fakes
         /// <param name="templateName">Name/location of the template</param>
         /// <param name="model">Model to use to locate the template via conventions</param>
         /// <returns>Contents of the template, or null if not found</returns>
-        public string GetTemplate(string templateName, object model)
+        public Task<string> GetTemplate(string templateName, object model)
         {
-            return this.GetTemplateCallback != null ? this.GetTemplateCallback.Invoke(templateName, model) : string.Empty;
+            return Task.FromResult(this.GetTemplateCallback != null ? this.GetTemplateCallback.Invoke(templateName, model) : string.Empty);
         }
 
         /// <summary>

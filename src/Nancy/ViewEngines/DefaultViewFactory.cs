@@ -6,8 +6,10 @@
     using System.IO;
     using System.Linq;
     using System.Text.RegularExpressions;
-
+    using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Conventions;
+    using Nancy.Helpers;
 
     /// <summary>
     /// The default implementation for how views are resolved and rendered by Nancy.
@@ -19,7 +21,7 @@
         private readonly IRenderContextFactory renderContextFactory;
         private readonly ViewLocationConventions conventions;
         private readonly IRootPathProvider rootPathProvider;
-        private static readonly Action<Stream> EmptyView = x => { };
+        private static readonly Func<Stream, CancellationToken, Task> EmptyView = (s, ct) => TaskHelpers.CompletedTask;
         private readonly string[] viewEngineExtensions;
 
         /// <summary>
@@ -48,7 +50,7 @@
         /// <param name="model">The model that should be passed into the view.</param>
         /// <param name="viewLocationContext">A <see cref="ViewLocationContext"/> instance, containing information about the context for which the view is being rendered.</param>
         /// <returns>A delegate that can be invoked with the <see cref="Stream"/> that the view should be rendered to.</returns>
-        public Response RenderView(string viewName, dynamic model, ViewLocationContext viewLocationContext)
+        public Task<Response> RenderView(string viewName, object model, ViewLocationContext viewLocationContext)
         {
             if (viewName == null && model == null)
             {
@@ -73,10 +75,10 @@
             return this.GetRenderedView(actualViewName, model, viewLocationContext);
         }
 
-        private Response GetRenderedView(string viewName, dynamic model, ViewLocationContext viewLocationContext)
+        private async Task<Response> GetRenderedView(string viewName, object model, ViewLocationContext viewLocationContext)
         {
             var viewLocationResult =
-                this.viewResolver.GetViewLocation(viewName, model, viewLocationContext);
+                await this.viewResolver.GetViewLocation(viewName, model, viewLocationContext);
 
             var resolvedViewEngine =
                 GetViewEngine(viewLocationResult, viewLocationContext.Context);
@@ -89,7 +91,7 @@
 
             viewLocationContext.Context.Trace.TraceLog.WriteLog(x => x.AppendLine(string.Concat("[DefaultViewFactory] Rendering view with view engine ", resolvedViewEngine.GetType().FullName)));
 
-            return SafeInvokeViewEngine(
+            return await SafeInvokeViewEngine(
                 resolvedViewEngine,
                 viewLocationResult,
                 GetSafeModel(model),
@@ -97,7 +99,7 @@
             );
         }
 
-        private string[] GetInspectedLocations(string viewName, dynamic model, ViewLocationContext viewLocationContext)
+        private string[] GetInspectedLocations(string viewName, object model, ViewLocationContext viewLocationContext)
         {
             var inspectedLocations = new List<string>();
 
@@ -156,14 +158,14 @@
             return matchingViewEngines.FirstOrDefault();
         }
 
-        private static string GetViewNameFromModel(dynamic model, NancyContext context)
+        private static string GetViewNameFromModel(object model, NancyContext context)
         {
             context.Trace.TraceLog.WriteLog(x => x.AppendLine(string.Concat("[DefaultViewFactory] Extracting view name from model of type ", model.GetType().FullName)));
 
             return Regex.Replace(model.GetType().Name, "Model$", string.Empty);
         }
 
-        private static Response SafeInvokeViewEngine(IViewEngine viewEngine, ViewLocationResult locationResult, dynamic model, IRenderContext renderContext)
+        private static Task<Response> SafeInvokeViewEngine(IViewEngine viewEngine, ViewLocationResult locationResult, object model, IRenderContext renderContext)
         {
             try
             {
@@ -171,7 +173,7 @@
             }
             catch (Exception)
             {
-                return EmptyView;
+                return Task.FromResult<Response>(EmptyView);
             }
         }
     }

@@ -6,7 +6,10 @@
     using System.Dynamic;
     using System.IO;
     using System.Linq;
+    using System.Security.Cryptography;
     using System.Text;
+    using System.Threading;
+    using System.Threading.Tasks;
     using FakeItEasy;
     using Microsoft.CSharp;
     using Nancy.Configuration;
@@ -42,11 +45,11 @@
             A.CallTo(() => this.configuration.GetAssemblyNames()).Returns(new[] { "Nancy.ViewEngines.Razor.Tests.Models" });
 
             var cache = A.Fake<IViewCache>();
-            A.CallTo(() => cache.GetOrAdd(A<ViewLocationResult>.Ignored, A<Func<ViewLocationResult, Func<INancyRazorView>>>.Ignored))
+            A.CallTo(() => cache.GetOrAdd(A<ViewLocationResult>.Ignored, A<Func<ViewLocationResult, Task<Func<INancyRazorView>>>>.Ignored))
                 .ReturnsLazily(x =>
                 {
                     var result = x.GetArgument<ViewLocationResult>(0);
-                    return x.GetArgument<Func<ViewLocationResult, Func<INancyRazorView>>>(1).Invoke(result);
+                    return Task.FromResult(x.GetArgument<Func<ViewLocationResult, Func<INancyRazorView>>>(1).Invoke(result));
                 });
 
             this.renderContext = A.Fake<IRenderContext>();
@@ -55,7 +58,7 @@
                 .ReturnsLazily(x =>
                 {
                     var viewName = x.GetArgument<string>(0);
-                    return FindView(viewName);
+                    return Task.FromResult(FindView(viewName));
                 });
 
             this.rootPathProvider = A.Fake<IRootPathProvider>();
@@ -65,7 +68,7 @@
         }
 
         [Fact]
-        public void GetCompiledView_should_render_to_stream()
+        public async Task GetCompiledView_should_render_to_stream()
         {
             // Given
             var location = new ViewLocationResult(
@@ -78,15 +81,15 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<h1>Hello Mr. test</h1>");
         }
 
         [Fact]
-        public void Should_be_able_to_render_view_with_partial_to_stream()
+        public async Task Should_be_able_to_render_view_with_partial_to_stream()
         {
             // Given
             var location = new ViewLocationResult(
@@ -108,8 +111,8 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<h1>Hello Mr. test</h1> this is partial");
@@ -151,7 +154,7 @@
         }
 
         [Fact]
-        public void RenderView_csharp_should_use_model_directive_for_strongly_typed_view()
+        public async Task RenderView_csharp_should_use_model_directive_for_strongly_typed_view()
         {
             // Given
             var location = FindView("ViewThatUsesModelCSharp");
@@ -161,15 +164,15 @@
             var model = new DateTime(2000, 1, 1);
 
             // When
-            var response = this.engine.RenderView(location, model, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, model, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<h1>Hello at " + model.ToString("MM/dd/yyyy") + "</h1>", true);
         }
 
         [Fact]
-        public void RenderView_csharp_should_be_able_to_use_a_model_from_another_assembly()
+        public async Task RenderView_csharp_should_be_able_to_use_a_model_from_another_assembly()
         {
             // Given
             var view = new StringBuilder()
@@ -188,15 +191,15 @@
             var model = new Person { Name = "Jeff" };
 
             // When
-            var response = this.engine.RenderView(location, model, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, model, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<h1>Hello Mr. Jeff</h1>");
         }
 
         [Fact]
-        public void RenderView_csharp_should_be_able_to_use_a_using_statement()
+        public async Task RenderView_csharp_should_be_able_to_use_a_using_statement()
         {
             // Given
             var view = new StringBuilder()
@@ -217,15 +220,15 @@
             var model = new Person { Name = "Jeff" };
 
             // When
-            var response = this.engine.RenderView(location, model, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, model, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<h1>Mr. Jeff likes Music!</h1>", true);
         }
 
         [Fact]
-        public void RenderView_csharp_should_be_able_to_find_the_model_when_a_null_model_is_passed()
+        public async Task RenderView_csharp_should_be_able_to_find_the_model_when_a_null_model_is_passed()
         {
             var view = new StringBuilder()
                 .AppendLine("@model Nancy.ViewEngines.Razor.Tests.Models.Person")
@@ -244,15 +247,15 @@
             A.CallTo(() => this.configuration.AutoIncludeModelNamespace).Returns(true);
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<h1>Mr. Somebody likes Music!</h1>", true);
         }
 
         [Fact]
-        public void RenderView_csharp_should_include_namespace_of_model_if_specified_in_the_configuration()
+        public async Task RenderView_csharp_should_include_namespace_of_model_if_specified_in_the_configuration()
         {
             // Given
             var view = new StringBuilder()
@@ -274,15 +277,15 @@
             A.CallTo(() => this.configuration.AutoIncludeModelNamespace).Returns(true);
 
             // When
-            var response = this.engine.RenderView(location, model, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, model, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual("<h1>Mr. Jeff likes Music!</h1>", true);
         }
 
         [Fact]
-        public void Should_be_able_to_render_view_with_layout_to_stream()
+        public async Task Should_be_able_to_render_view_with_layout_to_stream()
         {
             // Given
             var location = FindView("ViewThatUsesLayout");
@@ -290,8 +293,8 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             var output = ReadAll(stream);
@@ -299,7 +302,7 @@
         }
 
         [Fact]
-        public void Should_be_able_to_render_view_with_model_and_layout_to_stream()
+        public async Task Should_be_able_to_render_view_with_model_and_layout_to_stream()
         {
             // Given
             var location = FindView("ViewThatUsesLayoutAndModel");
@@ -311,7 +314,7 @@
 
             // When
             var response = this.engine.RenderView(location, model, this.renderContext);
-            response.Contents.Invoke(stream);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             var output = ReadAll(stream);
@@ -319,7 +322,7 @@
         }
 
         [Fact]
-        public void Should_be_able_to_render_view_with_layout_and_section_to_stream()
+        public async Task Should_be_able_to_render_view_with_layout_and_section_to_stream()
         {
             // Given
             var location = FindView("ViewThatUsesLayoutAndSection");
@@ -327,8 +330,8 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             var output = ReadAll(stream);
@@ -339,7 +342,7 @@
 
 
         [Fact]
-        public void Should_be_able_to_render_view_with_layout_and_many_sections_to_stream()
+        public async Task Should_be_able_to_render_view_with_layout_and_many_sections_to_stream()
         {
             // Given
             var location = FindView("ViewThatUsesLayoutAndManySection");
@@ -347,8 +350,8 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             var output = ReadAll(stream);
@@ -360,7 +363,7 @@
         }
 
         [Fact]
-        public void Should_be_able_to_render_view_with_layout_and_optional_section_to_stream()
+        public async Task Should_be_able_to_render_view_with_layout_and_optional_section_to_stream()
         {
             // Given
             var location = FindView("ViewThatUsesLayoutAndOptionalSection");
@@ -368,8 +371,8 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             var output = ReadAll(stream);
@@ -378,15 +381,15 @@
         }
 
         [Fact]
-        public void Should_be_able_to_render_view_with_layout_and_optional_section_with_default_to_stream()
+        public async Task Should_be_able_to_render_view_with_layout_and_optional_section_with_default_to_stream()
         {
             // Given
             var location = FindView("ViewThatUsesLayoutAndOptionalSectionWithDefaults");
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             var output = ReadAll(stream);
@@ -396,15 +399,15 @@
         }
 
         [Fact]
-        public void Should_be_able_to_render_view_with_layout_and_optional_section_overriding_the_default_to_stream()
+        public async Task Should_be_able_to_render_view_with_layout_and_optional_section_overriding_the_default_to_stream()
         {
             // Given
             var location = FindView("ViewThatUsesLayoutAndOptionalSectionOverridingDefaults");
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             var output = ReadAll(stream);
@@ -414,7 +417,7 @@
         }
 
         [Fact]
-        public void Should_be_able_to_render_view_with_helper_to_steam()
+        public async Task Should_be_able_to_render_view_with_helper_to_steam()
         {
             // Given
             var location = FindView("ViewThatUsesHelper");
@@ -422,8 +425,8 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             var output = ReadAll(stream);
@@ -431,7 +434,7 @@
         }
 
         [Fact]
-        public void Should_use_custom_view_base_with_csharp_views()
+        public async Task Should_use_custom_view_base_with_csharp_views()
         {
             // Given
             var view = new StringBuilder()
@@ -448,8 +451,8 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             var output = ReadAll(stream).Trim();
@@ -457,14 +460,14 @@
         }
 
         [Fact]
-        public void Should_render_attributes_with_code_inside()
+        public async Task Should_render_attributes_with_code_inside()
         {
             var location = FindView("ViewThatUsesAttributeWithCodeInside");
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, new TestModel { Name = "Bob", Slug = "BobSlug" }, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, new TestModel { Name = "Bob", Slug = "BobSlug" }, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             var output = ReadAll(stream);
@@ -472,7 +475,7 @@
         }
 
         [Fact]
-        public void Should_render_compilation_source_on_compilation_error()
+        public async Task Should_render_compilation_source_on_compilation_error()
         {
             // Given
             var view = new StringBuilder()
@@ -489,8 +492,8 @@
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             var output = ReadAll(stream);
@@ -498,15 +501,15 @@
         }
 
         [Fact]
-        public void Should_render_attributes_with_dynamic_null_inside()
+        public async Task Should_render_attributes_with_dynamic_null_inside()
         {
             // Given
             var location = FindView("ViewThatUsesAttributeWithDynamicNullInside");
             var stream = new MemoryStream();
 
             // When
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             var output = ReadAll(stream);
@@ -514,7 +517,7 @@
         }
 
         [Fact]
-        public void Should_render_attributes_with_HtmlString_inside()
+        public async Task Should_render_attributes_with_HtmlString_inside()
         {
             // Given
             var location = FindView("ViewThatUsesAttributeWithHtmlStringInside");
@@ -523,8 +526,8 @@
             const string PHRASE_RESULT = "Slugs &amp; bugs are secret spies on gardeners, but &lt;strong&gt;no one&lt;/strong&gt; knows who they spy for";
 
             // When
-            var response = this.engine.RenderView(location, PHRASE, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, PHRASE, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             var output = ReadAll(stream);
@@ -532,7 +535,7 @@
         }
 
         [Fact]
-        public void Should_render_attributes_with_RawHtmlString_inside()
+        public async Task Should_render_attributes_with_RawHtmlString_inside()
         {
             // Given
             var location = FindView("ViewThatUsesAttributeWithRawHtmlStringInside");
@@ -540,8 +543,8 @@
             const string PHRASE = "Slugs & bugs are secret spies on gardeners, but <strong>no one</strong> knows who they spy for";
 
             // When
-            var response = this.engine.RenderView(location, PHRASE, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, PHRASE, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             var output = ReadAll(stream);
@@ -549,7 +552,7 @@
         }
 
         [Fact]
-        public void Should_render_attributes_with_NonEncodedHtmlString_inside()
+        public async Task Should_render_attributes_with_NonEncodedHtmlString_inside()
         {
             // Given
             var location = FindView("ViewThatUsesAttributeWithNonEncodedHtmlStringInside");
@@ -557,8 +560,8 @@
             const string PHRASE = "Slugs are secret spies on gardeners, but no one knows who they spy for";
 
             // When
-            var response = this.engine.RenderView(location, new NonEncodedHtmlString(PHRASE), this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, new NonEncodedHtmlString(PHRASE), this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             var output = ReadAll(stream);
@@ -595,15 +598,15 @@
         [InlineData(typeof(int[][, ,][]))]
         [InlineData(typeof(Tuple<int, string>[][, ,][]))]
         [InlineData(typeof(Tuple<int, int[][, ,][], string>))]
-        public void Should_be_able_to_render_csharp_view_with_generic_model(Type expectedType)
+        public async Task Should_be_able_to_render_csharp_view_with_generic_model(Type expectedType)
         {
             // Given
             var location = CreateViewLocationWithModel(expectedType, new CSharpCodeProvider(), "model");
 
             // When
             var stream = new MemoryStream();
-            var response = this.engine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.engine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.ShouldEqual(expectedType.FullName, true);

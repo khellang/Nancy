@@ -56,7 +56,7 @@ namespace Nancy.Routing
                 result = new Response();
             }
 
-            return this.negotiator.NegotiateResponse(result, context);
+            return await this.negotiator.NegotiateResponse(result, context);
         }
     }
 }

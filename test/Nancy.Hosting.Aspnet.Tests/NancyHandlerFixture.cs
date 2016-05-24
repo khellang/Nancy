@@ -10,7 +10,6 @@ namespace Nancy.Hosting.Aspnet.Tests
     using FakeItEasy;
 
     using Nancy.Cookies;
-    using Nancy.Helpers;
 
     using Xunit;
 
@@ -56,7 +55,7 @@ namespace Nancy.Hosting.Aspnet.Tests
                                       .Returns(Task.FromResult(nancyContext));
 
             // When
-            await this.handler.ProcessRequest(this.context);
+            await this.handler.ProcessRequest(this.context, CancellationToken.None);
 
             // Then
             A.CallTo(() => this.engine.HandleRequest(A<Request>
@@ -78,10 +77,10 @@ namespace Nancy.Hosting.Aspnet.Tests
             A.CallTo(() => cookie1.ToString()).Returns("the first cookie");
             A.CallTo(() => cookie2.ToString()).Returns("the second cookie");
 
-            SetupRequestProcess(nancyContext);
+            this.SetupRequestProcess(nancyContext);
 
             // When
-            await this.handler.ProcessRequest(context);
+            await this.handler.ProcessRequest(this.context, CancellationToken.None);
 
             // Then
             A.CallTo(() => this.response.AddHeader("Set-Cookie", "the first cookie")).MustHaveHappened();
@@ -103,7 +102,7 @@ namespace Nancy.Hosting.Aspnet.Tests
                                       .Returns(Task.FromResult(nancyContext));
 
             // When
-            await this.handler.ProcessRequest(this.context);
+            await this.handler.ProcessRequest(this.context, CancellationToken.None);
 
             // Then
             A.CallTo(() => disposable.Dispose()).MustHaveHappened(Repeated.Exactly.Once);

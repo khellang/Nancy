@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using System.IO;
     using System.Text;
+    using System.Threading;
     using Nancy.Configuration;
     using Nancy.Json;
     using Nancy.Responses;
@@ -20,7 +21,7 @@
 
             // When
             var output = new MemoryStream();
-            serializer.Serialize("application/json", input, output);
+            serializer.Serialize("application/json", input, output, CancellationToken.None);
             var actual = Encoding.UTF8.GetString(output.ToArray());
 
             // Then
@@ -36,7 +37,7 @@
 
             // When
             var output = new MemoryStream();
-            serializer.Serialize("application/json", input, output);
+            serializer.Serialize("application/json", input, output, CancellationToken.None);
             var actual = Encoding.UTF8.GetString(output.ToArray());
 
             // Then
@@ -57,7 +58,7 @@
 
             // When
             var output = new MemoryStream();
-            serializer.Serialize("application/json", input, output);
+            serializer.Serialize("application/json", input, output, CancellationToken.None);
             var actual = Encoding.UTF8.GetString(output.ToArray());
 
             // Then
@@ -74,7 +75,7 @@
 
             // When
             var output = new MemoryStream();
-            serializer.Serialize("application/json", input, output);
+            serializer.Serialize("application/json", input, output, CancellationToken.None);
             var actual = Encoding.UTF8.GetString(output.ToArray());
 
             // Then
@@ -101,7 +102,7 @@
 
             // When
             var output = new MemoryStream();
-            serializer.Serialize("application/json", input, output);
+            serializer.Serialize("application/json", input, output, CancellationToken.None);
             var actual = Encoding.UTF8.GetString(output.ToArray());
 
             // Then

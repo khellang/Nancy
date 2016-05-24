@@ -2,9 +2,12 @@ namespace Nancy.Tests.Unit.ErrorHandling
 {
     using System;
     using System.IO;
+    using System.Threading;
+    using System.Threading.Tasks;
     using FakeItEasy;
     using Nancy.Configuration;
     using Nancy.ErrorHandling;
+    using Nancy.Helpers;
     using Nancy.Responses.Negotiation;
     using Nancy.ViewEngines;
     using Xunit;
@@ -114,7 +117,7 @@ namespace Nancy.Tests.Unit.ErrorHandling
         {
             // Given
             var context = new NancyContext();
-            Action<Stream> contents = stream => { };
+            Func<Stream, CancellationToken, Task> contents = (stream, ct) => TaskHelpers.CompletedTask;
             context.Response = new Response() { StatusCode = HttpStatusCode.NotFound, Contents = contents };
 
             // When
@@ -125,7 +128,7 @@ namespace Nancy.Tests.Unit.ErrorHandling
         }
 
         [Fact]
-        public void Should_overwrite_response_contents_if_the_body_is_null_object()
+        public async Task Should_overwrite_response_contents_if_the_body_is_null_object()
         {
             // Given
             var context = new NancyContext();
@@ -138,7 +141,7 @@ namespace Nancy.Tests.Unit.ErrorHandling
             // Then
             using (var stream = new MemoryStream())
             {
-                context.Response.Contents.Invoke(stream);
+                await context.Response.Contents.Invoke(stream, CancellationToken.None);
                 stream.ToArray().Length.ShouldBeGreaterThan(0);
             }
         }
@@ -157,7 +160,7 @@ namespace Nancy.Tests.Unit.ErrorHandling
         }
 
         [Fact]
-        public void Should_leave_reponse_stream_open_if_response_is_InternalServerError()
+        public async Task Should_leave_reponse_stream_open_if_response_is_InternalServerError()
         {
             // Given
             var context = new NancyContext();
@@ -165,7 +168,7 @@ namespace Nancy.Tests.Unit.ErrorHandling
 
             // When
             this.statusCodeHandler.Handle(HttpStatusCode.InternalServerError, context);
-            context.Response.Contents(memoryStream);
+            await context.Response.Contents(memoryStream, CancellationToken.None);
 
             // Then
             memoryStream.CanRead.ShouldBeTrue();

@@ -313,7 +313,7 @@
                                 {
                                     ContentType = "image/vnd.microsoft.icon",
                                     StatusCode = HttpStatusCode.OK,
-                                    Contents = s => s.Write(this.FavIcon, 0, this.FavIcon.Length)
+                                    Contents = (s, ct) => s.WriteAsync(this.FavIcon, 0, this.FavIcon.Length, ct)
                                 };
 
                             response.Headers["Cache-Control"] = "public, max-age=604800, must-revalidate";

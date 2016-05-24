@@ -3,7 +3,7 @@ namespace Nancy.ViewEngines.Markdown
     using System.Collections.Generic;
     using System.IO;
     using System.Text.RegularExpressions;
-
+    using System.Threading.Tasks;
     using MarkdownSharp;
 
     using Nancy.Responses;
@@ -63,24 +63,21 @@ namespace Nancy.ViewEngines.Markdown
         /// <param name="model">The model that should be passed into the view</param>
         /// <param name="renderContext">The render context.</param>
         /// <returns>A response.</returns>
-        public Response RenderView(ViewLocationResult viewLocationResult, dynamic model, IRenderContext renderContext)
+        public async Task<Response> RenderView(ViewLocationResult viewLocationResult, object model, IRenderContext renderContext)
         {
             var response = new HtmlResponse();
 
-            var html = renderContext.ViewCache.GetOrAdd(viewLocationResult, result =>
-                                                                                {
-                                                                                    return ConvertMarkdown(viewLocationResult);
-                                                                                });
-
-
+            var html = await renderContext.ViewCache.GetOrAdd(viewLocationResult, result => ConvertMarkdown(viewLocationResult));
 
             var renderHtml = this.engineWrapper.Render(html, model, new MarkdownViewEngineHost(new NancyViewEngineHost(renderContext), renderContext, this.Extensions));
 
-            response.Contents = stream =>
+            response.Contents = async (stream, ct) =>
             {
-                var writer = new StreamWriter(stream);
-                writer.Write(renderHtml);
-                writer.Flush();
+                using (var writer = new StreamWriter(stream))
+                {
+                    await writer.WriteAsync(renderHtml);
+                    await writer.FlushAsync();
+                }
             };
 
             return response;
@@ -95,20 +92,21 @@ namespace Nancy.ViewEngines.Markdown
         /// <param name='viewLocationResult'>
         /// View location result.
         /// </param>
-        public string ConvertMarkdown(ViewLocationResult viewLocationResult)
+        public static async Task<string> ConvertMarkdown(ViewLocationResult viewLocationResult)
         {
-            string content;
             using (var reader = viewLocationResult.Contents.Invoke())
-                content = reader.ReadToEnd();
-
-            if (content.StartsWith("<!DOCTYPE html>"))
             {
-                return MarkdownViewengineRender.RenderMasterPage(content);
-            }
+                var content = await reader.ReadToEndAsync();
 
-            var parser = new Markdown();
-            var html = parser.Transform(content);
-            return ParagraphSubstitution.Replace(html, "$1");
+                if (content.StartsWith("<!DOCTYPE html>"))
+                {
+                    return MarkdownViewengineRender.RenderMasterPage(content);
+                }
+
+                var parser = new Markdown();
+                var html = parser.Transform(content);
+                return ParagraphSubstitution.Replace(html, "$1");
+            }
         }
     }
 }

@@ -169,10 +169,10 @@ namespace Nancy.Testing.Tests
             var model = new EchoModel { SomeString = "Some String", SomeInt = 29, SomeBoolean = true };
 
             // When
-            var result = await browser.Post("/", with =>
-                {
-                    with.XMLBody(model);
-                });
+            var result = await browser.Post("/", async with =>
+            {
+                await with.XMLBody(model);
+            });
 
             // Then
             var actualModel = result.Body.DeserializeXml<EchoModel>();
@@ -634,11 +634,13 @@ namespace Nancy.Testing.Tests
                     var body = new StreamReader(this.Context.Request.Body).ReadToEnd();
                     return new Response
                     {
-                        Contents = stream =>
+                        Contents = async (stream, ct) =>
                         {
-                            var writer = new StreamWriter(stream);
-                            writer.Write(body);
-                            writer.Flush();
+                            using (var writer = new StreamWriter(stream))
+                            {
+                                await writer.WriteAsync(body);
+                                await writer.FlushAsync();
+                            }
                         }
                     };
                 });

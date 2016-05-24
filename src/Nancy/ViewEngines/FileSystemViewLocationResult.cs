@@ -2,6 +2,7 @@
 {
     using System;
     using System.IO;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// View location result for file system based views.

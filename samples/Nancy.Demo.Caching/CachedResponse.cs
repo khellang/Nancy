@@ -1,8 +1,8 @@
 ﻿namespace Nancy.Demo.Caching
 {
-    using System;
     using System.IO;
     using System.Text;
+    using System.Threading;
     using System.Threading.Tasks;
     using Nancy;
 
@@ -23,31 +23,30 @@
             this.ContentType = response.ContentType;
             this.Headers = response.Headers;
             this.StatusCode = response.StatusCode;
-            this.Contents = this.GetContents();
+            this.Contents = this.GetContents;
         }
 
-        public override Task PreExecute(NancyContext context)
+        public override Task PreExecute(NancyContext context, CancellationToken cancellationToken)
         {
-            return this.response.PreExecute(context);
+            return this.response.PreExecute(context, cancellationToken);
         }
 
-        private Action<Stream> GetContents()
+        private async Task GetContents(Stream stream, CancellationToken cancellationToken)
         {
-            return stream =>
+            using (var memoryStream = new MemoryStream())
             {
-                using (var memoryStream = new MemoryStream())
+                await this.response.Contents.Invoke(memoryStream, cancellationToken).ConfigureAwait(false);
+
+                var contents =
+                    Encoding.ASCII.GetString(memoryStream.GetBuffer());
+
+                var writer = new StreamWriter(stream)
                 {
-                    this.response.Contents.Invoke(memoryStream);
+                    AutoFlush = true
+                };
 
-                    var contents =
-                        Encoding.ASCII.GetString(memoryStream.GetBuffer());
-
-                    var writer =
-                        new StreamWriter(stream) { AutoFlush = true };
-
-                    writer.Write(contents);
-                }
-            };
+                await writer.WriteAsync(contents).ConfigureAwait(false);
+            }
         }
     }
 }

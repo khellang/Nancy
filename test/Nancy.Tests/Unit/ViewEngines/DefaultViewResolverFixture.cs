@@ -3,7 +3,7 @@
     using System;
     using System.IO;
     using System.Linq;
-
+    using System.Threading.Tasks;
     using FakeItEasy;
 
     using Nancy.Conventions;
@@ -57,39 +57,39 @@
         }
 
         [Fact]
-        public void Should_return_null_when_the_viewlocationcontext_is_null()
+        public async Task Should_return_null_when_the_viewlocationcontext_is_null()
         {
             // Given
             ViewLocationContext context = null;
 
             // When
-            var result = this.viewResolver.GetViewLocation("viewName", new object(), context);
+            var result = await this.viewResolver.GetViewLocation("viewName", new object(), context);
 
             // Then
             result.ShouldBeNull();
         }
 
         [Fact]
-        public void Should_return_null_when_viewname_is_null()
+        public async Task Should_return_null_when_viewname_is_null()
         {
             // Given
             string viewName = null;
 
             // When
-            var result = this.viewResolver.GetViewLocation(viewName, new object(), null);
+            var result = await this.viewResolver.GetViewLocation(viewName, new object(), null);
 
             // Then
             result.ShouldBeNull();
         }
 
         [Fact]
-        public void Should_return_null_when_viewname_is_empty()
+        public async Task Should_return_null_when_viewname_is_empty()
         {
             // Given
             var viewName = string.Empty;
 
             // When
-            var result = this.viewResolver.GetViewLocation(viewName, new object(), null);
+            var result = await this.viewResolver.GetViewLocation(viewName, new object(), null);
 
             // Then
             result.ShouldBeNull();
@@ -195,7 +195,7 @@
             var resolver = new DefaultViewResolver(
                 this.viewLocator,
                 new ViewLocationConventions(new Func<string, dynamic, ViewLocationContext, string>[] {
-                    (name, model, path) =>  "bar.html" 
+                    (name, model, path) =>  "bar.html"
                 }));
 
             // When
@@ -212,7 +212,7 @@
             var resolver = new DefaultViewResolver(
                 this.viewLocator,
                 new ViewLocationConventions(new Func<string, dynamic, ViewLocationContext, string>[] {
-                    (name, model, path) =>  "bar.html" 
+                    (name, model, path) =>  "bar.html"
                 }));
 
             // When
@@ -231,7 +231,7 @@
             var resolver = new DefaultViewResolver(
                 this.viewLocator,
                 new ViewLocationConventions(new Func<string, dynamic, ViewLocationContext, string>[] {
-                    (name, model, path) =>  null 
+                    (name, model, path) =>  null
                 }));
 
             // When
@@ -250,7 +250,7 @@
             var resolver = new DefaultViewResolver(
                 this.viewLocator,
                 new ViewLocationConventions(new Func<string, dynamic, ViewLocationContext, string>[] {
-                    (name, model, path) => string.Empty 
+                    (name, model, path) => string.Empty
                 }));
 
             // When
@@ -261,7 +261,7 @@
         }
 
         [Fact]
-        public void Should_catch_exceptions_that_are_thrown_by_conventions()
+        public async Task Should_catch_exceptions_that_are_thrown_by_conventions()
         {
             // Given
             const string viewName = "foo.html";
@@ -273,14 +273,14 @@
                 }));
 
             // When
-            var exception = Record.Exception(() => resolver.GetViewLocation(viewName, null, this.viewLocationContext));
+            var exception = await Record.ExceptionAsync(() => resolver.GetViewLocation(viewName, null, this.viewLocationContext));
 
             // Then
             exception.ShouldBeNull();
         }
 
         [Fact]
-        public void Should_return_null_when_no_view_could_be_located()
+        public async Task Should_return_null_when_no_view_could_be_located()
         {
             // Given
             const string viewName = "foo.html";
@@ -294,14 +294,14 @@
             A.CallTo(() => this.viewLocator.LocateView(A<string>.Ignored, A<NancyContext>.Ignored)).Returns(null);
 
             // When
-            var result = resolver.GetViewLocation(viewName, null, this.viewLocationContext);
+            var result = await resolver.GetViewLocation(viewName, null, this.viewLocationContext);
 
             // Then
             result.ShouldBeNull();
         }
 
         [Fact]
-        public void return_viewlocationresult_when_view_could_be_located()
+        public async Task return_viewlocationresult_when_view_could_be_located()
         {
             // Given
             const string viewName = "foo.html";
@@ -318,7 +318,7 @@
             A.CallTo(() => this.viewLocator.LocateView(A<string>.Ignored, A<NancyContext>.Ignored)).Returns(locatedView);
 
             // When
-            var result = resolver.GetViewLocation(viewName, null, this.viewLocationContext);
+            var result = await resolver.GetViewLocation(viewName, null, this.viewLocationContext);
 
             // Then
             result.ShouldBeSameAs(locatedView);

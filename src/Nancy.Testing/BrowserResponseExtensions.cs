@@ -3,6 +3,7 @@ namespace Nancy.Testing
     using System;
     using System.IO;
     using System.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
     using System.Xml.Linq;
 
@@ -38,11 +39,11 @@ namespace Nancy.Testing
             }
         }
 
-        public static XDocument BodyAsXml(this BrowserResponse response)
+        public static async Task<XDocument> BodyAsXml(this BrowserResponse response, CancellationToken cancellationToken = default(CancellationToken))
         {
             using (var contentsStream = new MemoryStream())
             {
-                response.Context.Response.Contents.Invoke(contentsStream);
+                await response.Context.Response.Contents.Invoke(contentsStream, cancellationToken);
                 contentsStream.Position = 0;
                 return XDocument.Load(contentsStream);
             }

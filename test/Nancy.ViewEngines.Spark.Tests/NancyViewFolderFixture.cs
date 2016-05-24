@@ -2,6 +2,7 @@ namespace Nancy.ViewEngines.Spark.Tests
 {
     using System.Collections.Generic;
     using System.IO;
+    using System.Threading.Tasks;
     using Configuration;
     using FakeItEasy;
     using Nancy.Tests;

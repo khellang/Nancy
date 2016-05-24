@@ -14,11 +14,13 @@ namespace Nancy.Testing.Tests
             // Given
             var body = new BrowserResponseBodyWrapper(new Response
             {
-                Contents = stream =>
+                Contents = async (stream, ct) =>
                 {
-                    var writer = new StreamWriter(stream);
-                    writer.Write("This is the content");
-                    writer.Flush();
+                    using (var writer = new StreamWriter(stream))
+                    {
+                        await writer.WriteAsync("This is the content");
+                        await writer.FlushAsync();
+                    }
                 }
             }, A.Dummy<BrowserContext>());
 

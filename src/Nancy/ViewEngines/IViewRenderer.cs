@@ -1,5 +1,7 @@
 ﻿namespace Nancy.ViewEngines
 {
+    using System.Threading.Tasks;
+
     /// <summary>
     /// Interface for manually rendering views to a Response object, rather
     /// than going through content negotiation.
@@ -13,6 +15,6 @@
         /// <param name="viewName">View name</param>
         /// <param name="model">Model object (or null)</param>
         /// <returns>Response object containing the rendered view (if found)</returns>
-        Response RenderView(NancyContext context, string viewName, object model = null);
+        Task<Response> RenderView(NancyContext context, string viewName, object model = null);
     }
 }

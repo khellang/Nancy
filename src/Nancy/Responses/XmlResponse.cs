@@ -2,6 +2,8 @@
 {
     using System;
     using System.IO;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Configuration;
     using Nancy.Xml;
 
@@ -38,9 +40,9 @@
             }
         }
 
-        private Action<Stream> GetXmlContents(TModel model, ISerializer serializer)
+        private Func<Stream, CancellationToken, Task> GetXmlContents(TModel model, ISerializer serializer)
         {
-            return stream => serializer.Serialize(this.DefaultContentType, model, stream);
+            return (stream, ct) => serializer.Serialize(this.DefaultContentType, model, stream, ct);
         }
     }
 }

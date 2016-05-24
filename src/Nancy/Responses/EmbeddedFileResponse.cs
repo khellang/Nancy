@@ -22,8 +22,7 @@
             this.ContentType = MimeTypes.GetMimeType(name);
             this.StatusCode = HttpStatusCode.OK;
 
-            var content =
-                    GetResourceContent(assembly, resourcePath, name);
+            var content = this.GetResourceContent(assembly, resourcePath, name);
 
             if (content != null)
             {
@@ -31,15 +30,15 @@
                 content.Seek(0, SeekOrigin.Begin);
             }
 
-            this.Contents = stream =>
+            this.Contents = async (stream, ct) =>
             {
                 if (content != null)
                 {
-                    content.CopyTo(stream);
+                    await content.CopyToAsync(stream);
                 }
                 else
                 {
-                    stream.Write(ErrorText, 0, ErrorText.Length);
+                    await stream.WriteAsync(ErrorText, 0, ErrorText.Length);
                 }
             };
         }
@@ -51,7 +50,9 @@
                 .FirstOrDefault(x => GetFileNameFromResourceName(resourcePath, x).Equals(name, StringComparison.OrdinalIgnoreCase));
 
             if (resourceName == null)
+            {
                 return null;
+            }
 
             return assembly.GetManifestResourceStream(resourceName);
         }

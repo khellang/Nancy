@@ -2,7 +2,7 @@
 {
     using System.Collections.Generic;
     using System.IO;
-
+    using System.Threading.Tasks;
     using Nancy.Responses;
 
     /// <summary>
@@ -55,20 +55,24 @@
         /// <param name="model">The model that should be passed into the view</param>
         /// <param name="renderContext">An <see cref="IRenderContext"/> instance.</param>
         /// <returns>A response</returns>
-        public Response RenderView(ViewLocationResult viewLocationResult, dynamic model, IRenderContext renderContext)
+        public Task<Response> RenderView(ViewLocationResult viewLocationResult, object model, IRenderContext renderContext)
         {
-            return new HtmlResponse(contents: s =>
+            return Task.FromResult<Response>(new HtmlResponse(contents: async (s, ct) =>
             {
-                var writer = new StreamWriter(s);
-                var templateContents = renderContext.ViewCache.GetOrAdd(viewLocationResult, vr =>
+                using (var writer = new StreamWriter(s))
                 {
-                    using (var reader = vr.Contents.Invoke())
-                        return reader.ReadToEnd();
-                });
+                    var templateContents = await renderContext.ViewCache.GetOrAdd(viewLocationResult, async vr =>
+                    {
+                        using (var reader = vr.Contents.Invoke())
+                        {
+                            return await reader.ReadToEndAsync();
+                        }
+                    });
 
-                writer.Write(this.viewEngine.Render(templateContents, model, new NancyViewEngineHost(renderContext)));
-                writer.Flush();
-            });
+                    await writer.WriteAsync(this.viewEngine.Render(templateContents, model, new NancyViewEngineHost(renderContext)));
+                    await writer.FlushAsync();
+                }
+            }));
         }
     }
 }

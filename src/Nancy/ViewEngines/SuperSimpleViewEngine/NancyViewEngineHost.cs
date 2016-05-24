@@ -1,6 +1,7 @@
 namespace Nancy.ViewEngines.SuperSimpleViewEngine
 {
     using System;
+    using System.Threading.Tasks;
 
     public class NancyViewEngineHost : IViewEngineHost
     {
@@ -40,17 +41,19 @@ namespace Nancy.ViewEngines.SuperSimpleViewEngine
         /// <param name="templateName">Name/location of the template</param>
         /// <param name="model">Model to use to locate the template via conventions</param>
         /// <returns>Contents of the template, or null if not found</returns>
-        public string GetTemplate(string templateName, object model)
+        public async Task<string> GetTemplate(string templateName, object model)
         {
-            var viewLocationResult = this.renderContext.LocateView(templateName, model);
+            var viewLocationResult = await this.renderContext.LocateView(templateName, model);
 
             if (viewLocationResult == null)
             {
                 return "[ERR!]";
             }
 
-            using(var reader = viewLocationResult.Contents.Invoke())
-                return reader.ReadToEnd();
+            using (var reader = viewLocationResult.Contents.Invoke())
+            {
+                return await reader.ReadToEndAsync();
+            }
         }
 
         /// <summary>

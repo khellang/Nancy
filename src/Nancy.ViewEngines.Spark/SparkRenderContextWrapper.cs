@@ -1,13 +1,13 @@
 ﻿namespace Nancy.ViewEngines.Spark
 {
     using System.Collections.Generic;
-
+    using System.Threading.Tasks;
     using Nancy.Localization;
 
     /// <summary>
-    /// Wraps <see cref="IRenderContext"/> to replace tilde (~/) path resolution with Spark's native implementation. 
+    /// Wraps <see cref="IRenderContext"/> to replace tilde (~/) path resolution with Spark's native implementation.
     /// </summary>
-    /// <remarks>This allows the use of &lt;resources /&gt; configuration section. 
+    /// <remarks>This allows the use of &lt;resources /&gt; configuration section.
     /// Read more on http://sparkviewengine.com/documentation/configuring#Sparksettingsinconfigfile</remarks>
     internal class SparkRenderContextWrapper : IRenderContext
     {
@@ -51,7 +51,7 @@
             return this.innerContext.HtmlEncode(input);
         }
 
-        public ViewLocationResult LocateView(string viewName, dynamic model)
+        public Task<ViewLocationResult> LocateView(string viewName, dynamic model)
         {
             return this.innerContext.LocateView(viewName, model);
         }

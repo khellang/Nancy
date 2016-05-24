@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Threading.Tasks;
     using Nancy.Configuration;
 
     /// <summary>
@@ -44,7 +45,7 @@
         /// <param name="model">The model for the given media range</param>
         /// <param name="context">The nancy context</param>
         /// <returns>A ProcessorMatch result that determines the priority of the processor</returns>
-        public ProcessorMatch CanProcess(MediaRange requestedMediaRange, dynamic model, NancyContext context)
+        public ProcessorMatch CanProcess(MediaRange requestedMediaRange, object model, NancyContext context)
         {
             if (IsExactJsonContentType(requestedMediaRange))
             {
@@ -78,9 +79,9 @@
         /// <param name="model">The model for the given media range</param>
         /// <param name="context">The nancy context</param>
         /// <returns>A response</returns>
-        public Response Process(MediaRange requestedMediaRange, dynamic model, NancyContext context)
+        public Task<Response> Process(MediaRange requestedMediaRange, object model, NancyContext context)
         {
-            return new JsonResponse(model, this.serializer, this.environment);
+            return Task.FromResult<Response>(new JsonResponse(model, this.serializer, this.environment));
         }
 
         private static bool IsExactJsonContentType(MediaRange requestedContentType)

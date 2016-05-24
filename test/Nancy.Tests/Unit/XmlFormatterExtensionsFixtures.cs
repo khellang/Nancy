@@ -1,6 +1,8 @@
 namespace Nancy.Tests.Unit
 {
     using System.IO;
+    using System.Threading;
+    using System.Threading.Tasks;
     using System.Xml;
     using FakeItEasy;
     using Nancy.Configuration;
@@ -48,11 +50,11 @@ namespace Nancy.Tests.Unit
         }
 
         [Fact]
-        public void Should_return_a_valid_model_in_xml_format()
+        public async Task Should_return_a_valid_model_in_xml_format()
         {
             using (var stream = new MemoryStream())
             {
-                response.Contents(stream);
+                await response.Contents(stream, CancellationToken.None);
 
                 var root = GetXmlRoot(stream);
 
@@ -64,11 +66,11 @@ namespace Nancy.Tests.Unit
         }
 
         [Fact]
-        public void Should_return_a_null_in_xml_format()
+        public async Task Should_return_a_null_in_xml_format()
         {
             using (var stream = new MemoryStream())
             {
-                responseFormatter.AsXml<Person>(null).Contents(stream);
+                await responseFormatter.AsXml<Person>(null).Contents(stream, CancellationToken.None);
 
                 var root = GetXmlRoot(stream);
                 root.GetAttribute("nil", "http://www.w3.org/2001/XMLSchema-instance").ShouldEqual("true");

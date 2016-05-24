@@ -68,12 +68,12 @@ namespace Nancy.Routing
                     }
                 }
 
-                await this.ExecutePost(context, cancellationToken, resolveResult.After, resolveResult.OnError)
-                    .ConfigureAwait(false);
+                await this.ExecutePost(context, cancellationToken, resolveResult.After, resolveResult.OnError).ConfigureAwait(false);
             }
             catch(Exception ex)
             {
-                context.Response = this.ResolveErrorResult(context, resolveResult.OnError, ex);
+                // TODO: Wish we could use C# 6 to await here...
+                context.Response = this.ResolveErrorResult(context, resolveResult.OnError, ex).Result;
 
                 if (context.Response == null)
                 {
@@ -93,12 +93,12 @@ namespace Nancy.Routing
 
             try
             {
-                await postHook.Invoke(context, cancellationToken)
-                    .ConfigureAwait(false);
+                await postHook.Invoke(context, cancellationToken).ConfigureAwait(false);
             }
             catch(Exception ex)
             {
-                context.Response = this.ResolveErrorResult(context, onError, ex);
+                // TODO: Wish we could use C# 6 to await here...
+                context.Response = this.ResolveErrorResult(context, onError, ex).Result;
 
                 if(context.Response == null)
                 {
@@ -117,7 +117,7 @@ namespace Nancy.Routing
             return resolveResultPreReq.Invoke(context, cancellationToken);
         }
 
-        private Response ResolveErrorResult(NancyContext context, Func<NancyContext, Exception, dynamic> resolveResultOnError, Exception exception)
+        private Task<Response> ResolveErrorResult(NancyContext context, Func<NancyContext, Exception, dynamic> resolveResultOnError, Exception exception)
         {
             if (resolveResultOnError != null)
             {
@@ -130,7 +130,7 @@ namespace Nancy.Routing
                 }
             }
 
-            return null;
+            return Task.FromResult<Response>(null);
         }
 
         private ResolveResult Resolve(NancyContext context)

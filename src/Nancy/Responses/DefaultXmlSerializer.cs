@@ -5,7 +5,10 @@
     using System.IO;
     using System.Xml.Serialization;
     using System.Text;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Configuration;
+    using Nancy.Helpers;
     using Nancy.Responses.Negotiation;
     using Nancy.Xml;
 
@@ -54,7 +57,7 @@
         /// <param name="model">Model to serialize</param>
         /// <param name="outputStream">Output stream to serialize to</param>
         /// <returns>Serialised object</returns>
-        public void Serialize<TModel>(MediaRange mediaRange, TModel model, Stream outputStream)
+        public Task Serialize<TModel>(MediaRange mediaRange, TModel model, Stream outputStream, CancellationToken cancellationToken)
         {
             try
             {
@@ -77,6 +80,8 @@
                     outputStream.Write(bytes, 0, exception.Message.Length);
                 }
             }
+
+            return TaskHelpers.CompletedTask;
         }
 
         private static bool IsXmlType(string contentType)

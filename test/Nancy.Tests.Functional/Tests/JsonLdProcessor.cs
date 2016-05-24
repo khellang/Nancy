@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Threading.Tasks;
     using Nancy.Responses.Negotiation;
 
     public class JsonLdProcessor : IResponseProcessor
@@ -28,14 +29,14 @@
             };
         }
 
-        public Response Process(MediaRange requestedMediaRange, dynamic model, NancyContext context)
+        public Task<Response> Process(MediaRange requestedMediaRange, dynamic model, NancyContext context)
         {
-            return new Response
+            return Task.FromResult(new Response
             {
                 ContentType = "application/json",
-                Contents = stream => this.serializer.Serialize("application/json", model, stream),
+                Contents = (stream, ct) => this.serializer.Serialize("application/json", model, stream, ct),
                 StatusCode = HttpStatusCode.OK
-            }.WithHeader("Link", "</context.jsonld>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"");
+            }.WithHeader("Link", "</context.jsonld>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\""));
         }
     }
 }

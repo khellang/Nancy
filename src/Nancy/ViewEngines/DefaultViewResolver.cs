@@ -1,7 +1,7 @@
 ﻿namespace Nancy.ViewEngines
 {
     using System;
-
+    using System.Threading.Tasks;
     using Nancy.Conventions;
 
     /// <summary>
@@ -40,16 +40,18 @@
         /// <param name="model">The model that will be used with the view.</param>
         /// <param name="viewLocationContext">A <see cref="ViewLocationContext"/> instance, containing information about the context for which the view is being located.</param>
         /// <returns>A <see cref="ViewLocationResult"/> instance if the view could be found, otherwise <see langword="null"/>.</returns>
-        public ViewLocationResult GetViewLocation(string viewName, dynamic model, ViewLocationContext viewLocationContext)
+        public Task<ViewLocationResult> GetViewLocation(string viewName, object model, ViewLocationContext viewLocationContext)
         {
+            var nullResult = Task.FromResult<ViewLocationResult>(null);
+
             if (string.IsNullOrEmpty(viewName))
             {
-                return null;
+                return nullResult;
             }
 
             if (viewLocationContext == null)
             {
-                return null;
+                return nullResult;
             }
 
             viewLocationContext.Context.Trace.TraceLog.WriteLog(x => x.AppendLine(string.Concat("[DefaultViewResolver] Resolving view for '", viewName , "', using view location conventions.")));
@@ -72,13 +74,13 @@
                 if (locatedView != null)
                 {
                     viewLocationContext.Context.Trace.TraceLog.WriteLog(x => x.AppendLine(string.Concat("[DefaultViewResolver] View resolved at '", conventionBasedViewName, "'")));
-                    return locatedView;
+                    return Task.FromResult(locatedView);
                 }
             }
 
             viewLocationContext.Context.Trace.TraceLog.WriteLog(x => x.AppendLine("[DefaultViewResolver] No view could be resolved using the available view location conventions."));
 
-            return null;
+            return nullResult;
         }
 
         private static string SafeInvokeConvention(Func<string, object, ViewLocationContext, string> convention, string viewName, dynamic model, ViewLocationContext viewLocationContext)

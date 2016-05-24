@@ -3,6 +3,8 @@ namespace Nancy.Testing
     using System.Collections;
     using System.Collections.Generic;
     using System.IO;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.IO;
 
     /// <summary>
@@ -22,7 +24,9 @@ namespace Nancy.Testing
         public BrowserResponseBodyWrapper(Response response, BrowserContext browserContext)
         {
             this.BrowserContext = browserContext;
-            var contentStream = GetContentStream(response);
+
+            // TODO: What to do here?
+            var contentStream = GetContentStream(response, CancellationToken.None).GetAwaiter().GetResult();
 
             this.responseBytes = contentStream.ToArray();
             this.contentType = response.ContentType;
@@ -43,13 +47,14 @@ namespace Nancy.Testing
         /// <value>A <see cref="BrowserContext"/> intance.</value>
         public BrowserContext BrowserContext { get; private set; }
 
-        private static MemoryStream GetContentStream(Response response)
+        private static async Task<MemoryStream> GetContentStream(Response response, CancellationToken cancellationToken)
         {
             var contentsStream = new MemoryStream();
 
             var unclosableStream = new UnclosableStreamWrapper(contentsStream);
 
-            response.Contents.Invoke(unclosableStream);
+            await response.Contents.Invoke(unclosableStream, cancellationToken);
+
             contentsStream.Position = 0;
 
             return contentsStream;

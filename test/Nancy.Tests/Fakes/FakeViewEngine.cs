@@ -1,7 +1,7 @@
 ﻿namespace Nancy.Tests.Fakes
 {
     using System.Collections.Generic;
-
+    using System.Threading.Tasks;
     using Nancy.Responses;
     using Nancy.ViewEngines;
 
@@ -20,10 +20,10 @@
         {
         }
 
-        public Response RenderView(ViewLocationResult viewLocationResult, dynamic model, IRenderContext renderContext)
+        public Task<Response> RenderView(ViewLocationResult viewLocationResult, object model, IRenderContext renderContext)
         {
             this.Model = model;
-            return new HtmlResponse();
+            return Task.FromResult<Response>(new HtmlResponse());
         }
     }
 }

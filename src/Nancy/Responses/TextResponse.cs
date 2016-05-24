@@ -35,10 +35,11 @@
 
             if (contents != null)
             {
-                this.Contents = stream =>
+                this.Contents = (stream, ct) =>
                 {
                     var data = encoding.GetBytes(contents);
-                    stream.Write(data, 0, data.Length);
+
+                    return stream.WriteAsync(data, 0, data.Length);
                 };
             }
         }
@@ -63,10 +64,11 @@
 
             if (contents != null)
             {
-                this.Contents = stream =>
+                this.Contents = (stream, ct) =>
                 {
                     var data = encoding.GetBytes(contents);
-                    stream.Write(data, 0, data.Length);
+
+                    return stream.WriteAsync(data, 0, data.Length);
                 };
             }
 
@@ -86,7 +88,7 @@
 
         private static string GetContentType(string contentType, Encoding encoding)
         {
-            return !contentType.Contains("charset") 
+            return !contentType.Contains("charset")
                 ? string.Concat(contentType, "; charset=", encoding.WebName)
                 : contentType;
         }

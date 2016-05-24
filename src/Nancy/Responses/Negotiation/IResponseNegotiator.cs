@@ -1,5 +1,7 @@
 ﻿namespace Nancy.Responses.Negotiation
 {
+    using System.Threading.Tasks;
+
     /// <summary>
     /// Creates a response from a given result and context.
     /// </summary>
@@ -11,6 +13,6 @@
         /// <param name="routeResult">The route result.</param>
         /// <param name="context">The context.</param>
         /// <returns>A <see cref="Response"/>.</returns>
-        Response NegotiateResponse(dynamic routeResult, NancyContext context);
+        Task<Response> NegotiateResponse(object routeResult, NancyContext context);
     }
 }

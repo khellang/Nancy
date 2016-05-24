@@ -266,11 +266,12 @@
 
                 await this.InvokePostRequestHook(context, cancellationToken, pipelines.AfterRequest).ConfigureAwait(false);
 
-                await response.PreExecute(context).ConfigureAwait(false);
+                await response.PreExecute(context, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                this.InvokeOnErrorHook(context, pipelines.OnError, ex);
+                // TODO: Use C# 6 to await
+                this.InvokeOnErrorHook(context, pipelines.OnError, ex).Wait(cancellationToken);
             }
 
             return context;
@@ -286,7 +287,7 @@
             return pipeline == null ? TaskHelpers.CompletedTask : pipeline.Invoke(context, cancellationToken);
         }
 
-        private void InvokeOnErrorHook(NancyContext context, ErrorPipeline pipeline, Exception ex)
+        private async Task InvokeOnErrorHook(NancyContext context, ErrorPipeline pipeline, Exception ex)
         {
             try
             {
@@ -302,7 +303,7 @@
                     throw new RequestExecutionException(ex);
                 }
 
-                context.Response = this.negotiator.NegotiateResponse(onErrorResult, context);
+                context.Response = await this.negotiator.NegotiateResponse(onErrorResult, context);
             }
             catch (Exception e)
             {

@@ -3,7 +3,8 @@
     using System.IO;
     using System.Reflection;
     using System.Text;
-
+    using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Diagnostics;
     using Nancy.Embedded.Conventions;
     using Nancy.Responses;
@@ -14,44 +15,44 @@
     public class EmbeddedStaticContentConventionBuilderFixture
     {
         [Fact]
-        public void Should_retrieve_static_content_with_urlencoded_dot()
+        public async Task Should_retrieve_static_content_with_urlencoded_dot()
         {
             // Given
             // When
-            var result = GetEmbeddedStaticContent("Foo", "embedded%2etxt");
+            var result = await GetEmbeddedStaticContent("Foo", "embedded%2etxt");
 
             // Then
             result.ShouldEqual("Embedded Text");
         }
 
         [Fact]
-        public void Should_retrieve_static_content_in_subfolder()
+        public async Task Should_retrieve_static_content_in_subfolder()
         {
             // Given
             // When
-            var result = GetEmbeddedStaticContent("Foo", "Subfolder/embedded2.txt");
+            var result = await GetEmbeddedStaticContent("Foo", "Subfolder/embedded2.txt");
 
             // Then
             result.ShouldEqual("Embedded2 Text");
         }
 
         [Fact]
-        public void Should_retrieve_static_content_with_hyphens_in_subfolder()
+        public async Task Should_retrieve_static_content_with_hyphens_in_subfolder()
         {
             // Given
             // When
-            var result = GetEmbeddedStaticContent("Foo", "Subfolder-with-hyphen/embedded3.txt");
+            var result = await GetEmbeddedStaticContent("Foo", "Subfolder-with-hyphen/embedded3.txt");
 
             // Then
             result.ShouldEqual("Embedded3 Text");
         }
 
         [Fact]
-        public void Should_retrieve_static_content_with_relative_path()
+        public async Task Should_retrieve_static_content_with_relative_path()
         {
             // Given
             // When
-            var result = GetEmbeddedStaticContent("Foo", "Subfolder/../embedded.txt");
+            var result = await GetEmbeddedStaticContent("Foo", "Subfolder/../embedded.txt");
 
             // Then
             result.ShouldEqual("Embedded Text");
@@ -68,7 +69,7 @@
             result.ShouldEqual("Embedded2 Text");
         }
 
-        private static string GetEmbeddedStaticContent(string virtualDirectory, string requestedFilename, string contentPath = null)
+        private static async Task<string> GetEmbeddedStaticContent(string virtualDirectory, string requestedFilename, string contentPath = null)
         {
             var resource =
                 string.Format("/{0}/{1}", virtualDirectory, requestedFilename);
@@ -96,7 +97,7 @@
             {
                 using (var stream = new MemoryStream())
                 {
-                    response.Contents(stream);
+                    await response.Contents(stream, CancellationToken.None);
                     return Encoding.UTF8.GetString(stream.GetBuffer(), 0, (int)stream.Length);
                 }
             }

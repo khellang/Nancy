@@ -3,7 +3,10 @@
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Configuration;
+    using Nancy.Helpers;
     using Nancy.IO;
     using Nancy.Json;
     using Nancy.Responses.Negotiation;
@@ -53,7 +56,7 @@
         /// <param name="model">Model to serialize</param>
         /// <param name="outputStream">Stream to serialize to</param>
         /// <returns>Serialised object</returns>
-        public void Serialize<TModel>(MediaRange mediaRange, TModel model, Stream outputStream)
+        public Task Serialize<TModel>(MediaRange mediaRange, TModel model, Stream outputStream, CancellationToken cancellationToken)
         {
             using (var writer = new StreamWriter(new UnclosableStreamWrapper(outputStream)))
             {
@@ -73,6 +76,8 @@
                         writer.Write(exception.Message);
                     }
                 }
+
+                return TaskHelpers.CompletedTask;
             }
         }
 

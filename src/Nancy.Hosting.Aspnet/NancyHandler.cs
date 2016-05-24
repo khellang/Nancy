@@ -4,6 +4,7 @@ namespace Nancy.Hosting.Aspnet
     using System.Configuration;
     using System.Globalization;
     using System.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
     using System.Web;
 
@@ -30,13 +31,13 @@ namespace Nancy.Hosting.Aspnet
         /// Processes the ASP.NET request with Nancy.
         /// </summary>
         /// <param name="httpContext">The <see cref="HttpContextBase"/> of the request.</param>
-        public async Task ProcessRequest(HttpContextBase httpContext)
+        public async Task ProcessRequest(HttpContextBase httpContext, CancellationToken cancellationToken)
         {
             var request = CreateNancyRequest(httpContext);
 
             using(var nancyContext = await this.engine.HandleRequest(request).ConfigureAwait(false))
             {
-                SetNancyResponseToHttpResponse(httpContext, nancyContext.Response);
+                await SetNancyResponseToHttpResponse(httpContext, nancyContext.Response, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -53,14 +54,15 @@ namespace Nancy.Hosting.Aspnet
             path = string.IsNullOrWhiteSpace(path) ? "/" : path;
 
             var nancyUrl = new Url
-                               {
-                                   Scheme = context.Request.Url.Scheme,
-                                   HostName = context.Request.Url.Host,
-                                   Port = context.Request.Url.Port,
-                                   BasePath = basePath,
-                                   Path = path,
-                                   Query = context.Request.Url.Query,
-                               };
+            {
+                Scheme = context.Request.Url.Scheme,
+                HostName = context.Request.Url.Host,
+                Port = context.Request.Url.Port,
+                BasePath = basePath,
+                Path = path,
+                Query = context.Request.Url.Query,
+            };
+
             byte[] certificate = null;
 
             if (context.Request.ClientCertificate != null &&
@@ -79,11 +81,11 @@ namespace Nancy.Hosting.Aspnet
 
             var protocolVersion = context.Request.ServerVariables["HTTP_VERSION"];
 
-            return new Request(context.Request.HttpMethod.ToUpperInvariant(), 
-                nancyUrl, 
-                body, 
-                incomingHeaders, 
-                context.Request.UserHostAddress, 
+            return new Request(context.Request.HttpMethod.ToUpperInvariant(),
+                nancyUrl,
+                body,
+                incomingHeaders,
+                context.Request.UserHostAddress,
                 certificate,
                 protocolVersion);
         }
@@ -117,7 +119,7 @@ namespace Nancy.Hosting.Aspnet
             return contentLength;
         }
 
-        public static void SetNancyResponseToHttpResponse(HttpContextBase context, Response response)
+        private static Task SetNancyResponseToHttpResponse(HttpContextBase context, Response response, CancellationToken cancellationToken)
         {
             SetHttpResponseHeaders(context, response);
 
@@ -138,7 +140,7 @@ namespace Nancy.Hosting.Aspnet
                 context.Response.StatusDescription = response.ReasonPhrase;
             }
 
-            response.Contents.Invoke(new NancyResponseStream(context.Response));
+            return response.Contents.Invoke(new NancyResponseStream(context.Response), cancellationToken);
         }
 
         private static bool IsOutputBufferDisabled()

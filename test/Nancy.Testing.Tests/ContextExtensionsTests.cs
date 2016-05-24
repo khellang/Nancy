@@ -3,6 +3,8 @@ namespace Nancy.Testing.Tests
     using System;
     using System.IO;
     using System.Text;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Configuration;
     using Nancy.Json;
     using Nancy.Responses;
@@ -13,7 +15,7 @@ namespace Nancy.Testing.Tests
     public class ContextExtensionsTests
     {
         [Fact]
-        public void Should_use_documentwrapper_from_context_if_it_is_present()
+        public async Task Should_use_documentwrapper_from_context_if_it_is_present()
         {
             // Given
             var buffer =
@@ -24,28 +26,29 @@ namespace Nancy.Testing.Tests
             context.Items["@@@@DOCUMENT_WRAPPER@@@@"] = wrapper; // Yucky hardcoded stringyness
 
             // When
-            var result = context.DocumentBody();
+            var result = await context.DocumentBody();
 
             // Then
             result.ShouldBeSameAs(wrapper);
         }
 
         [Fact]
-        public void Should_create_new_wrapper_from_html_response_if_not_already_present()
+        public async Task Should_create_new_wrapper_from_html_response_if_not_already_present()
         {
             // Given
             var called = false;
             var bodyBytes = Encoding.ASCII.GetBytes("<html></html>");
-            Action<Stream> bodyDelegate = (s) =>
+            Func<Stream, CancellationToken, Task> bodyDelegate = async (s, ct) =>
             {
-                s.Write(bodyBytes, 0, bodyBytes.Length);
+                await s.WriteAsync(bodyBytes, 0, bodyBytes.Length, ct);
                 called = true;
             };
+
             var response = new Response { Contents = bodyDelegate };
             var context = new NancyContext() { Response = response };
 
             // When
-            var result = context.DocumentBody();
+            var result = await context.DocumentBody(CancellationToken.None);
 
             // Then
             result.ShouldBeOfType(typeof(DocumentWrapper));
@@ -53,7 +56,7 @@ namespace Nancy.Testing.Tests
         }
 
         [Fact]
-        public void Should_use_jsonresponse_from_context_if_it_is_present()
+        public async Task Should_use_jsonresponse_from_context_if_it_is_present()
         {
             // Given
             var model = new Model() { Dummy = "Data" };
@@ -61,14 +64,14 @@ namespace Nancy.Testing.Tests
             context.Items["@@@@JSONRESPONSE@@@@"] = model; // Yucky hardcoded stringyness
 
             // When
-            var result = context.JsonBody<Model>();
+            var result = await context.JsonBody<Model>();
 
             // Then
             result.ShouldBeSameAs(model);
         }
 
         [Fact]
-        public void Should_create_new_wrapper_from_json_response_if_not_already_present()
+        public async Task Should_create_new_wrapper_from_json_response_if_not_already_present()
         {
             // Given
             var environment = GetTestingEnvironment();
@@ -76,28 +79,28 @@ namespace Nancy.Testing.Tests
             var context = new NancyContext() { Response = response };
 
             // When
-            var result = context.JsonBody<Model>();
+            var result = await context.JsonBody<Model>();
 
             // Then
             result.Dummy.ShouldEqual("Data");
         }
 
         [Fact]
-        public void Should_use_xmlresponse_from_context_if_it_is_present()
+        public async Task Should_use_xmlresponse_from_context_if_it_is_present()
         {
             // Given
             var model = new Model() { Dummy = "Data" };
             var context = new NancyContext();
             context.Items["@@@@XMLRESPONSE@@@@"] = model; // Yucky hardcoded stringyness
 
-            var result = context.XmlBody<Model>();
+            var result = await context.XmlBody<Model>();
 
             // Then
             result.ShouldBeSameAs(model);
         }
 
         [Fact]
-        public void Should_create_new_wrapper_from_xml_response_if_not_already_present()
+        public async Task Should_create_new_wrapper_from_xml_response_if_not_already_present()
         {
             // Given
             var environment = new DefaultNancyEnvironment();
@@ -110,14 +113,14 @@ namespace Nancy.Testing.Tests
             var context = new NancyContext() { Response = response };
 
             // When
-            var result = context.XmlBody<Model>();
+            var result = await context.XmlBody<Model>();
 
             // Then
             result.Dummy.ShouldEqual("Data");
         }
 
         [Fact]
-        public void Should_fail_to_return_xml_body_on_non_xml_response()
+        public async Task Should_fail_to_return_xml_body_on_non_xml_response()
         {
             // Given
             var environment = GetTestingEnvironment();
@@ -125,7 +128,7 @@ namespace Nancy.Testing.Tests
             var context = new NancyContext() { Response = response };
 
             // When
-            var result = Record.Exception(() => context.XmlBody<Model>());
+            var result = await Assert.ThrowsAsync<InvalidOperationException>(async () => await context.XmlBody<Model>());
 
             // Then
             result.ShouldNotBeNull();

@@ -59,7 +59,7 @@ namespace Nancy.Tests.Unit
         public void Should_immediately_invoke_nancy_if_no_request_body_delegate()
         {
             // Given
-            var fakeResponse = new Response { StatusCode = HttpStatusCode.OK, Contents = s => { } };
+            var fakeResponse = new Response { StatusCode = HttpStatusCode.OK, Contents = (s, ct) => TaskHelpers.CompletedTask };
             var fakeContext = new NancyContext { Response = fakeResponse };
             this.SetupFakeNancyCompleteCallback(fakeContext);
 
@@ -78,7 +78,7 @@ namespace Nancy.Tests.Unit
         public void Should_set_return_code_in_response_callback()
         {
             // Given
-            var fakeResponse = new Response {StatusCode = HttpStatusCode.OK, Contents = s => { }};
+            var fakeResponse = new Response {StatusCode = HttpStatusCode.OK, Contents = (s, ct) => TaskHelpers.CompletedTask };
             var fakeContext = new NancyContext {Response = fakeResponse};
             this.SetupFakeNancyCompleteCallback(fakeContext);
 
@@ -97,7 +97,7 @@ namespace Nancy.Tests.Unit
             {
                 StatusCode = HttpStatusCode.OK,
                 Headers = new Dictionary<string, string> {{"TestHeader", "TestValue"}},
-                Contents = s => { }
+                Contents = (s, ct) => TaskHelpers.CompletedTask
             };
             var fakeContext = new NancyContext {Response = fakeResponse};
             this.SetupFakeNancyCompleteCallback(fakeContext);
@@ -122,10 +122,10 @@ namespace Nancy.Tests.Unit
             var fakeResponse = new Response
             {
                 StatusCode = HttpStatusCode.OK,
-                Contents = s =>
+                Contents = async (s, ct) =>
                 {
-                    s.Write(data1, 0, data1.Length);
-                    s.Write(data2, 0, data2.Length);
+                    await s.WriteAsync(data1, 0, data1.Length, ct);
+                    await s.WriteAsync(data2, 0, data2.Length, ct);
                 }
             };
             var fakeContext = new NancyContext {Response = fakeResponse};
@@ -145,7 +145,7 @@ namespace Nancy.Tests.Unit
         {
             // Given
             var data1 = Encoding.ASCII.GetBytes("Some content");
-            var fakeResponse = new Response {StatusCode = HttpStatusCode.OK, Contents = s => s.Write(data1, 0, data1.Length)};
+            var fakeResponse = new Response {StatusCode = HttpStatusCode.OK, Contents = (s, ct) => s.WriteAsync(data1, 0, data1.Length, ct)};
             var fakeContext = new NancyContext {Response = fakeResponse};
             var mockDisposable = A.Fake<IDisposable>();
             fakeContext.Items.Add("Test", mockDisposable);
@@ -209,7 +209,7 @@ namespace Nancy.Tests.Unit
             IPrincipal user = new ClaimsPrincipal(new GenericIdentity("testuser"));
             this.environment.Add("server.User", user);
 
-            var fakeResponse = new Response { StatusCode = HttpStatusCode.OK, Contents = s => { } };
+            var fakeResponse = new Response { StatusCode = HttpStatusCode.OK, Contents = (s, ct) => TaskHelpers.CompletedTask };
             var fakeContext = new NancyContext { Response = fakeResponse };
             this.SetupFakeNancyCompleteCallback(fakeContext);
 
@@ -227,7 +227,7 @@ namespace Nancy.Tests.Unit
             var user = new ClaimsPrincipal(new GenericIdentity("testuser"));
             this.environment.Add("owin.RequestUser", user);
 
-            var fakeResponse = new Response { StatusCode = HttpStatusCode.OK, Contents = s => { } };
+            var fakeResponse = new Response { StatusCode = HttpStatusCode.OK, Contents = (s, ct) => TaskHelpers.CompletedTask };
             var fakeContext = new NancyContext { Response = fakeResponse };
             this.SetupFakeNancyCompleteCallback(fakeContext);
 

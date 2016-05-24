@@ -2,6 +2,7 @@
 {
     using System;
     using System.IO;
+    using System.Threading;
     using System.Threading.Tasks;
 
     using Nancy.Helpers;
@@ -17,15 +18,15 @@
         private readonly Response sourceResponse;
         private byte[] oldResponseOutput;
 
-        public override Task PreExecute(NancyContext context)
+        public override async Task PreExecute(NancyContext context, CancellationToken cancellationToken)
         {
             using (var memoryStream = new MemoryStream())
             {
-                this.sourceResponse.Contents.Invoke(memoryStream);
+                await this.sourceResponse.Contents.Invoke(memoryStream, cancellationToken);
                 this.oldResponseOutput = memoryStream.ToArray();
             }
 
-            return base.PreExecute(context);
+            await base.PreExecute(context, cancellationToken);
         }
 
         public MaterialisingResponse(Response sourceResponse)
@@ -36,18 +37,18 @@
             this.StatusCode = sourceResponse.StatusCode;
             this.ReasonPhrase = sourceResponse.ReasonPhrase;
 
-            this.Contents = WriteContents;
+            this.Contents = this.WriteContents;
         }
 
-        private void WriteContents(Stream stream)
+        private async Task WriteContents(Stream stream, CancellationToken cancellationToken)
         {
             if (this.oldResponseOutput == null)
             {
-                this.sourceResponse.Contents.Invoke(stream);
+                await this.sourceResponse.Contents.Invoke(stream, cancellationToken);
             }
             else
             {
-                stream.Write(this.oldResponseOutput, 0, this.oldResponseOutput.Length);
+                await stream.WriteAsync(this.oldResponseOutput, 0, this.oldResponseOutput.Length, cancellationToken);
             }
         }
     }

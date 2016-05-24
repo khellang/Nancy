@@ -3,6 +3,8 @@
     using System;
     using System.IO;
     using System.Linq;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Configuration;
     using Nancy.Helpers;
 
@@ -51,13 +53,13 @@
         /// <value>A string containing the name of the file.</value>
         public string Filename { get; protected set; }
 
-        private static Action<Stream> GetFileContent(string filePath, long length)
+        private static Func<Stream, CancellationToken, Task> GetFileContent(string filePath, long length)
         {
-            return stream =>
+            return async (stream, ct) =>
             {
                 using (var file = File.OpenRead(filePath))
                 {
-                    file.CopyTo(stream, (int)(length < BufferSize ? length : BufferSize));
+                    await file.CopyToAsync(stream, (int)(length < BufferSize ? length : BufferSize), ct).ConfigureAwait(false);
                 }
             };
         }
@@ -111,7 +113,7 @@
             StatusCode = HttpStatusCode.NotFound;
         }
 
-        private void SetResponseValues(string contentType, string fullPath, NancyContext context)
+        private async Task SetResponseValues(string contentType, string fullPath, NancyContext context)
         {
             // TODO - set a standard caching time and/or public?
             var fi = new FileInfo(fullPath);

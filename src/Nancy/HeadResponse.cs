@@ -3,6 +3,7 @@
     using System;
     using System.Globalization;
     using System.IO;
+    using System.Threading;
     using System.Threading.Tasks;
 
  	  /// <summary>
@@ -22,10 +23,10 @@
         public HeadResponse(Response response)
         {
             this.innerResponse = response;
-            this.Contents = stream =>
+            this.Contents = async (stream, ct) =>
             {
-                this.CheckAndSetContentLength(this.innerResponse);
-                GetStringContents(string.Empty)(stream);
+                await this.CheckAndSetContentLength(this.innerResponse, ct);
+                await GetStringContents(string.Empty)(stream, ct);
             };
             this.ContentType = response.ContentType;
             this.Headers = response.Headers;
@@ -33,12 +34,12 @@
             this.ReasonPhrase = response.ReasonPhrase;
         }
 
-        public override Task PreExecute(NancyContext context)
+        public override Task PreExecute(NancyContext context, CancellationToken cancellationToken)
         {
-            return this.innerResponse.PreExecute(context);
+            return this.innerResponse.PreExecute(context, cancellationToken);
         }
 
-        private void CheckAndSetContentLength(Response response)
+        private async Task CheckAndSetContentLength(Response response, CancellationToken cancellationToken)
         {
             if (this.Headers.ContainsKey(ContentLength))
             {
@@ -47,7 +48,7 @@
 
             using (var nullStream = new NullStream())
             {
-                response.Contents.Invoke(nullStream);
+                await response.Contents.Invoke(nullStream, cancellationToken);
 
                 this.Headers[ContentLength] = nullStream.Length.ToString(CultureInfo.InvariantCulture);
             }

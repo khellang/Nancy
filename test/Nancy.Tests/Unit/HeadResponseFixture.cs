@@ -2,7 +2,8 @@ namespace Nancy.Tests.Unit
 {
     using System.Collections.Generic;
     using System.IO;
-
+    using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Tests.Extensions;
     using FakeItEasy;
 
@@ -24,59 +25,61 @@ namespace Nancy.Tests.Unit
             this.response.StatusCode = HttpStatusCode.ResetContent;
         }
 
-        private HeadResponse CreateHeadResponse()
+        private async Task<HeadResponse> CreateHeadResponse()
         {
             var head = new HeadResponse(this.response);
-            head.PreExecute(A.Dummy<NancyContext>());
-            head.Contents(new MemoryStream());
+            await head.PreExecute(A.Dummy<NancyContext>(), CancellationToken.None);
+            await head.Contents(new MemoryStream(), CancellationToken.None);
             return head;
         }
 
         [Fact]
-        public void Should_set_status_property_to_that_of_decorated_response()
+        public async Task Should_set_status_property_to_that_of_decorated_response()
         {
             //When
-            var head = this.CreateHeadResponse();
-            
+            var head = await this.CreateHeadResponse();
+
             // Then
             head.StatusCode.ShouldEqual(this.response.StatusCode);
         }
 
         [Fact]
-        public void Should_set_headers_property_to_that_of_decorated_response()
+        public async Task Should_set_headers_property_to_that_of_decorated_response()
         {
             //When
-            var head = this.CreateHeadResponse();
+            var head = await this.CreateHeadResponse();
 
             // Then
             head.Headers.ShouldBeSameAs(this.headers);
         }
 
         [Fact]
-        public void Should_set_content_type_property_to_that_of_decorated_response()
+        public async Task Should_set_content_type_property_to_that_of_decorated_response()
         {
             //When
-            var head = this.CreateHeadResponse();
+            var head = await this.CreateHeadResponse();
 
             // Then
             head.ContentType.ShouldEqual(this.response.ContentType);
         }
 
         [Fact]
-        public void Should_set_empty_content()
+        public async Task Should_set_empty_content()
         {
             //When
-            var head = this.CreateHeadResponse();
+            var head = await this.CreateHeadResponse();
+
+            var content = await head.GetStringContentsFromResponse();
 
             // Then
-            head.GetStringContentsFromResponse().ShouldBeEmpty();
+            content.ShouldBeEmpty();
         }
 
         [Fact]
-        public void Should_set_content_length()
+        public async Task Should_set_content_length()
         {
             //When
-            var head = this.CreateHeadResponse();
+            var head = await this.CreateHeadResponse();
 
             // Then
             head.Headers.ContainsKey("Content-Length").ShouldBeTrue();
@@ -84,11 +87,11 @@ namespace Nancy.Tests.Unit
         }
 
         [Fact]
-        public void Should_not_overwrite_content_length()
+        public async Task Should_not_overwrite_content_length()
         {
             // Given, When
             this.response.Headers.Add("Content-Length", "foo");
-            var head = this.CreateHeadResponse();
+            var head = await this.CreateHeadResponse();
 
             // Then
             head.Headers.ContainsKey("Content-Length").ShouldBeTrue();

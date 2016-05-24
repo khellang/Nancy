@@ -4,6 +4,7 @@
     using System.Globalization;
     using System.IO;
     using System.Threading;
+    using System.Threading.Tasks;
     using Configuration;
     using FakeItEasy;
     using global::Spark;
@@ -29,10 +30,10 @@
             this.renderContext = A.Fake<IRenderContext>();
 
             var cache = A.Fake<IViewCache>();
-            A.CallTo(() => cache.GetOrAdd(A<ViewLocationResult>.Ignored, A<Func<ViewLocationResult, ISparkViewEntry>>.Ignored))
+            A.CallTo(() => cache.GetOrAdd(A<ViewLocationResult>.Ignored, A<Func<ViewLocationResult, Task<ISparkViewEntry>>>.Ignored))
                 .ReturnsLazily(x => {
                     var result = x.GetArgument<ViewLocationResult>(0);
-                    return x.GetArgument<Func<ViewLocationResult, ISparkViewEntry>>(1).Invoke(result);
+                    return Task.FromResult(x.GetArgument<Func<ViewLocationResult, ISparkViewEntry>>(1).Invoke(result));
                 });
 
             A.CallTo(() => this.renderContext.ViewCache).Returns(cache);
@@ -42,10 +43,10 @@
         }
 
         [Fact]
-        public void Application_dot_spark_should_be_used_as_the_master_layout_if_present()
+        public async Task Application_dot_spark_should_be_used_as_the_master_layout_if_present()
         {
             //Given, When
-            this.FindViewAndRender("ViewThatUsesApplicationLayout");
+            await this.FindViewAndRender("ViewThatUsesApplicationLayout");
 
             //Then
             this.output.ShouldContainInOrder(
@@ -56,10 +57,10 @@
         }
 
         [Fact]
-        public void Should_be_able_to_html_encode_using_H_function_from_views()
+        public async Task Should_be_able_to_html_encode_using_H_function_from_views()
         {
             //Given, When
-            this.FindViewAndRender("ViewThatUsesHtmlEncoding");
+            await this.FindViewAndRender("ViewThatUsesHtmlEncoding");
 
             //Then
             this.output.Replace(" ", "").Replace("\r", "").Replace("\n", "")
@@ -67,20 +68,20 @@
         }
 
         [Fact]
-        public void Should_be_able_to_html_encode_null_using_H_function_from_views()
+        public async Task Should_be_able_to_html_encode_null_using_H_function_from_views()
         {
             //Given, When
-            this.FindViewAndRender("ViewThatUsesNullHtmlEncoding");
+            await this.FindViewAndRender("ViewThatUsesNullHtmlEncoding");
 
             //Then
             this.output.ShouldEqual("<div></div>");
         }
 
         [Fact]
-        public void Should_be_able_to_provide_global_setting_for_views()
+        public async Task Should_be_able_to_provide_global_setting_for_views()
         {
             //Given, When
-            this.FindViewAndRender("ViewThatChangesGlobalSettings");
+            await this.FindViewAndRender("ViewThatChangesGlobalSettings");
 
             //Then
             this.output.ShouldContainInOrder(
@@ -89,10 +90,10 @@
         }
 
         [Fact]
-        public void Should_be_able_to_render_a_child_view_with_a_master_layout()
+        public async Task Should_be_able_to_render_a_child_view_with_a_master_layout()
         {
             //Given, When
-            this.FindViewAndRender("ViewThatExpectsALayout");
+            await this.FindViewAndRender("ViewThatExpectsALayout");
 
             //Then
             this.output.ShouldContainInOrder(
@@ -103,62 +104,62 @@
         }
 
         [Fact]
-        public void Should_be_able_to_render_a_plain_view()
+        public async Task Should_be_able_to_render_a_plain_view()
         {
             //Given, When
-            this.FindViewAndRender("Index");
+            await this.FindViewAndRender("Index");
 
             //Then
             this.output.ShouldEqual("<div>index</div>");
         }
 
         [Fact]
-        public void Should_be_able_to_render_a_subfolder_view()
+        public async Task Should_be_able_to_render_a_subfolder_view()
         {
             var viewLocationResult = new ViewLocationResult("Stub\\Subfolder", "Subfolderview", "spark", GetEmptyContentReader());
-            this.FindViewAndRender<dynamic>("subfolder\\Subfolderview", null, viewLocationResult);
+            await this.FindViewAndRender<dynamic>("subfolder\\Subfolderview", null, viewLocationResult);
 
             //Then
             this.output.ShouldEqual("<div>Subfolder</div>");
         }
 
         [Fact]
-        public void Should_be_able_to_render_a_view_even_with_null_view_model()
+        public async Task Should_be_able_to_render_a_view_even_with_null_view_model()
         {
             //Given, When
-            this.FindViewAndRender("ViewThatUsesANullViewModel");
+            await this.FindViewAndRender("ViewThatUsesANullViewModel");
 
             //Then
             this.output.ShouldContain("<div>nothing</div>");
         }
 
         [Fact]
-        public void Should_be_able_to_render_a_view_with_a_strongly_typed_model()
+        public async Task Should_be_able_to_render_a_view_with_a_strongly_typed_model()
         {
             //Given, When
-            this.FindViewAndRender("ViewThatUsesViewModel", new FakeViewModel {Text = "Spark"});
+            await this.FindViewAndRender("ViewThatUsesViewModel", new FakeViewModel { Text = "Spark" });
 
             //Then
             this.output.ShouldContain("<div>Spark</div>");
         }
 
         [Fact(Skip = "Only add this if we think we'll need to render anonymous types")]
-        public void Should_be_able_to_render_a_view_with_an_anonymous_view_model()
+        public async Task Should_be_able_to_render_a_view_with_an_anonymous_view_model()
         {
             //Given, When
-            this.FindViewAndRender("ViewThatUsesAnonymousViewModel", new {Foo = 42, Bar = new FakeViewModel {Text = "is the answer"}});
+            await this.FindViewAndRender("ViewThatUsesAnonymousViewModel", new { Foo = 42, Bar = new FakeViewModel { Text = "is the answer" } });
 
             //Then
             this.output.ShouldContain("<div>42 is the answer</div>");
         }
 
         [Fact(Skip = "Only add this if we think we'll need to render anonymous types")]
-        public void Should_be_able_to_render_a_view_with_culture_aware_formatting()
+        public async Task Should_be_able_to_render_a_view_with_culture_aware_formatting()
         {
             using (new ScopedCulture(CultureInfo.CreateSpecificCulture("en-us")))
             {
                 //Given, When
-                this.FindViewAndRender("ViewThatUsesFormatting", new {Number = 9876543.21, Date = new DateTime(2010, 12, 11)});
+                await this.FindViewAndRender("ViewThatUsesFormatting", new {Number = 9876543.21, Date = new DateTime(2010, 12, 11)});
 
                 //Then
                 this.output.ShouldContainInOrder(
@@ -168,12 +169,12 @@
         }
 
         [Fact]
-        public void Should_be_able_to_render_partials_that_share_state()
+        public async Task Should_be_able_to_render_partials_that_share_state()
         {
             //Given
 
             // When
-            this.FindViewAndRender("ViewThatRendersPartialsThatShareState");
+            await this.FindViewAndRender("ViewThatRendersPartialsThatShareState");
 
             //Then
             this.output.ShouldContainInOrder(
@@ -196,10 +197,10 @@
         }
 
         [Fact]
-        public void Should_be_able_to_use_a_partial_file_explicitly()
+        public async Task Should_be_able_to_use_a_partial_file_explicitly()
         {
             //Given, When
-            this.FindViewAndRender("ViewThatUsesPartial");
+            await this.FindViewAndRender("ViewThatUsesPartial");
 
             //Then
             this.output.ShouldContainInOrder(
@@ -213,10 +214,10 @@
         }
 
         [Fact]
-        public void Should_be_able_to_use_a_partial_file_implicitly()
+        public async Task Should_be_able_to_use_a_partial_file_implicitly()
         {
             //Given, Then
-            this.FindViewAndRender("ViewThatUsesPartialImplicitly");
+            await this.FindViewAndRender("ViewThatUsesPartialImplicitly");
 
             //Then
             this.output.ShouldContainInOrder(
@@ -225,10 +226,10 @@
         }
 
         [Fact]
-        public void Should_be_able_to_use_foreach_construct_in_the_view()
+        public async Task Should_be_able_to_use_foreach_construct_in_the_view()
         {
             //Given, When
-            this.FindViewAndRender("ViewThatUsesForeach");
+            await this.FindViewAndRender("ViewThatUsesForeach");
 
             //Then
             this.output.ShouldContainInOrder(
@@ -238,10 +239,10 @@
         }
 
         [Fact]
-        public void Should_be_able_to_use_namespaces_directly()
+        public async Task Should_be_able_to_use_namespaces_directly()
         {
             //Given, When
-            this.FindViewAndRender("ViewThatUsesNamespaces");
+            await this.FindViewAndRender("ViewThatUsesNamespaces");
 
             //Then
             this.output.ShouldContainInOrder(
@@ -251,10 +252,10 @@
         }
 
         [Fact]
-        public void Should_capture_named_content_areas_and_render_in_the_correct_order()
+        public async Task Should_capture_named_content_areas_and_render_in_the_correct_order()
         {
             //Given, When
-            this.FindViewAndRender("ViewThatUsesAllNamedContentAreas");
+            await this.FindViewAndRender("ViewThatUsesAllNamedContentAreas");
 
             //Then
             this.output.ShouldContainInOrder(
@@ -265,14 +266,14 @@
         }
 
         [Fact]
-        public void Should_substitute_tilde_in_resource_url_with_parse_result_from_Render_Context()
+        public async Task Should_substitute_tilde_in_resource_url_with_parse_result_from_Render_Context()
         {
             //Given
             A.CallTo(() => this.renderContext.ParsePath("~/"))
                 .Returns("/mysensationalrootfolder/");
 
             //When
-            this.FindViewAndRender("ViewThatUsesTildeSubstitution");
+            await this.FindViewAndRender("ViewThatUsesTildeSubstitution");
 
             //Then
             this.output.ShouldContain(@"<script type=""text/javascript"" src=""/mysensationalrootfolder/scripts/test.js""/>");
@@ -309,14 +310,14 @@
         }
 
         [Fact]
-        public void Should_use_application_dot_shade_as_the_master_layout_if_present()
+        public async Task Should_use_application_dot_shade_as_the_master_layout_if_present()
         {
             //Given,
             const string viewName = "ShadeThatUsesApplicationLayout";
-            var viewLocationResult = GetShadeViewLocation(viewName);
+            var viewLocationResult = this.GetShadeViewLocation(viewName);
 
             //When
-            this.FindViewAndRender(viewName, viewLocationResult);
+            await this.FindViewAndRender(viewName, viewLocationResult);
 
             //Then
             this.output.ShouldContainInOrder(
@@ -329,14 +330,14 @@
         }
 
         [Fact]
-        public void Should_render_a_shade_file()
+        public async Task Should_render_a_shade_file()
         {
             //Given
             const string viewName = "ShadeFileRenders";
-            var viewLocationResult = GetShadeViewLocation(viewName);
+            var viewLocationResult = this.GetShadeViewLocation(viewName);
 
             //When
-            this.FindViewAndRender(viewName, viewLocationResult);
+            await this.FindViewAndRender(viewName, viewLocationResult);
 
             //Then
             this.output.ShouldContainInOrder(
@@ -356,14 +357,14 @@
         }
 
         [Fact]
-        public void Should_evaluate_expressions_in_shade()
+        public async Task Should_evaluate_expressions_in_shade()
         {
             //Given
             const string viewName = "ShadeEvaluatesExpressions";
-            var viewLocationResult = GetShadeViewLocation(viewName);
+            var viewLocationResult = this.GetShadeViewLocation(viewName);
 
             //When
-            this.FindViewAndRender(viewName, viewLocationResult);
+            await this.FindViewAndRender(viewName, viewLocationResult);
 
             //Then
             this.output.ShouldContainInOrder(
@@ -378,14 +379,14 @@
         }
 
         [Fact]
-        public void Should_allow_dash_or_braced_code_recognition_in_shade()
+        public async Task Should_allow_dash_or_braced_code_recognition_in_shade()
         {
             //Given
             const string viewName = "ShadeCodeMayBeDashOrAtBraced";
-            var viewLocationResult = GetShadeViewLocation(viewName);
+            var viewLocationResult = this.GetShadeViewLocation(viewName);
 
             //When
-            this.FindViewAndRender(viewName, viewLocationResult);
+            await this.FindViewAndRender(viewName, viewLocationResult);
 
             //Then
             this.output.ShouldContainInOrder(
@@ -398,14 +399,14 @@
         }
 
         [Fact]
-        public void Should_allow_text_to_contain_expressions_in_shade()
+        public async Task Should_allow_text_to_contain_expressions_in_shade()
         {
             //Given
             const string viewName = "ShadeTextMayContainExpressions";
-            var viewLocationResult = GetShadeViewLocation(viewName);
+            var viewLocationResult = this.GetShadeViewLocation(viewName);
 
             //When
-            this.FindViewAndRender(viewName, viewLocationResult);
+            await this.FindViewAndRender(viewName, viewLocationResult);
 
             //Then
             this.output.ShouldContainInOrder(
@@ -416,14 +417,14 @@
         }
 
         [Fact]
-        public void Should_support_attributes_and_treat_some_as_special_nodes_like_partials_in_shade()
+        public async Task Should_support_attributes_and_treat_some_as_special_nodes_like_partials_in_shade()
         {
             //Given
             const string viewName = "ShadeSupportsAttributesAndMayTreatSomeElementsAsSpecialNodes";
-            var viewLocationResult = GetShadeViewLocation(viewName);
+            var viewLocationResult = this.GetShadeViewLocation(viewName);
 
             //When
-            this.FindViewAndRender(viewName, viewLocationResult);
+            await this.FindViewAndRender(viewName, viewLocationResult);
 
             //Then
             this.output.ShouldContainInOrder(
@@ -439,14 +440,14 @@
         }
 
         [Fact]
-        public void Should_allow_elements_to_stack_on_one_line_in_shade()
+        public async Task Should_allow_elements_to_stack_on_one_line_in_shade()
         {
             //Given
             const string viewName = "ShadeElementsMayStackOnOneLine";
-            var viewLocationResult = GetShadeViewLocation(viewName);
+            var viewLocationResult = this.GetShadeViewLocation(viewName);
 
             //When
-            this.FindViewAndRender(viewName, viewLocationResult);
+            await this.FindViewAndRender(viewName, viewLocationResult);
 
             //Then
             this.output.ShouldContainInOrder(
@@ -466,7 +467,7 @@
         }
 
         [Fact]
-        public void Should_allow_using_viewdata_tag_for_retrieving_values_from_ViewBag()
+        public async Task Should_allow_using_viewdata_tag_for_retrieving_values_from_ViewBag()
         {
             // Given
             var nancyContext = new NancyContext();
@@ -474,7 +475,7 @@
             A.CallTo(() => renderContext.Context).Returns(nancyContext);
 
             // When
-            FindViewAndRender("ViewThatUsesViewDataForViewBag");
+            await this.FindViewAndRender("ViewThatUsesViewDataForViewBag");
 
             // Then
             this.output.ShouldContain("<div>bar</div>");
@@ -488,7 +489,7 @@
             return viewLocationResult;
         }
 
-        private void FindViewAndRender<T>(string viewName, T viewModel, ViewLocationResult viewLocationResult = null) where T : class
+        private async Task FindViewAndRender<T>(string viewName, T viewModel, ViewLocationResult viewLocationResult = null) where T : class
         {
             if (viewLocationResult == null)
             {
@@ -507,8 +508,8 @@
             engine.Initialize(context);
 
             //When
-            var response = engine.RenderView(viewLocationResult, viewModel, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await engine.RenderView(viewLocationResult, viewModel, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
             stream.Position = 0;
             using (var reader = new StreamReader(stream))
             {
@@ -521,14 +522,14 @@
             return new Spark.SparkViewEngine(new DefaultRootPathProvider(), this.environment);
         }
 
-        private void FindViewAndRender(string viewName)
+        private Task FindViewAndRender(string viewName)
         {
-            this.FindViewAndRender<dynamic>(viewName, null);
+            return this.FindViewAndRender<dynamic>(viewName, null);
         }
 
-        private void FindViewAndRender(string viewName, ViewLocationResult viewLocationResult)
+        private Task FindViewAndRender(string viewName, ViewLocationResult viewLocationResult)
         {
-            this.FindViewAndRender<dynamic>(viewName, null, viewLocationResult);
+            return this.FindViewAndRender<dynamic>(viewName, null, viewLocationResult);
         }
 
         private static Func<TextReader> GetEmptyContentReader()

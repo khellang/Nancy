@@ -1,6 +1,7 @@
 ﻿namespace Nancy.ViewEngines
 {
     using System.Collections.Generic;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Defines the functionality that a view engine must support to be integrated into Nancy.
@@ -27,6 +28,6 @@
         /// <param name="model">The model that should be passed into the view</param>
         /// <param name="renderContext"></param>
         /// <returns>A response</returns>
-        Response RenderView(ViewLocationResult viewLocationResult, dynamic model, IRenderContext renderContext);
+        Task<Response> RenderView(ViewLocationResult viewLocationResult, object model, IRenderContext renderContext);
     }
 }

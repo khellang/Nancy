@@ -2,6 +2,7 @@ namespace Nancy.Hosting.Aspnet
 {
     using System;
     using System.Configuration;
+    using System.Threading;
     using System.Threading.Tasks;
     using System.Web;
 
@@ -90,7 +91,8 @@ namespace Nancy.Hosting.Aspnet
         {
             var nancyHandler = new NancyHandler(engine);
 
-            return nancyHandler.ProcessRequest(new HttpContextWrapper(context));
+            // TODO: Where to get the CancellationToken from?
+            return nancyHandler.ProcessRequest(new HttpContextWrapper(context), CancellationToken.None);
         }
     }
 }

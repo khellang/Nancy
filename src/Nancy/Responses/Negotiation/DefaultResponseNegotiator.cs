@@ -6,7 +6,7 @@
     using System.Linq;
     using System.Reflection;
     using System.Text;
-
+    using System.Threading.Tasks;
     using Nancy.Conventions;
     using Nancy.Extensions;
 
@@ -35,7 +35,7 @@
         /// <param name="routeResult">The route result.</param>
         /// <param name="context">The context.</param>
         /// <returns>A <see cref="Response" />.</returns>
-        public Response NegotiateResponse(dynamic routeResult, NancyContext context)
+        public Task<Response> NegotiateResponse(object routeResult, NancyContext context)
         {
             Response response;
             if (TryCastResultToResponse(routeResult, out response))
@@ -43,13 +43,13 @@
                 context.WriteTraceLog(sb =>
                     sb.AppendLine("[DefaultResponseNegotiator] Processing as real response"));
 
-                return response;
+                return Task.FromResult(response);
             }
 
             context.WriteTraceLog(sb =>
                 sb.AppendLine("[DefaultResponseNegotiator] Processing as negotiation"));
 
-            NegotiationContext negotiationContext = GetNegotiationContext(routeResult, context);
+            var negotiationContext = GetNegotiationContext(routeResult, context);
 
             var coercedAcceptHeaders = this.GetCoercedAcceptHeaders(context).ToArray();
 
@@ -62,10 +62,10 @@
                 context.WriteTraceLog(sb =>
                     sb.AppendLine("[DefaultResponseNegotiator] Unable to negotiate response - no headers compatible"));
 
-                return new NotAcceptableResponse();
+                return Task.FromResult<Response>(new NotAcceptableResponse());
             }
 
-            return CreateResponse(compatibleHeaders, negotiationContext, context);
+            return this.CreateResponse(compatibleHeaders, negotiationContext, context);
         }
 
         /// <summary>
@@ -74,7 +74,7 @@
         /// <param name="routeResult">The result.</param>
         /// <param name="response">The response.</param>
         /// <returns><c>true</c> if the result is a <see cref="Response"/>, <c>false</c> otherwise.</returns>
-        private static bool TryCastResultToResponse(dynamic routeResult, out Response response)
+        private static bool TryCastResultToResponse(object routeResult, out Response response)
         {
             var targetType = routeResult.GetType();
             var responseType = typeof(Response);
@@ -213,11 +213,11 @@
         /// <param name="context">The context.</param>
         /// <returns>IEnumerable{Tuple{IResponseProcessor, ProcessorMatch}}.</returns>
         private IEnumerable<Tuple<IResponseProcessor, ProcessorMatch>> GetCompatibleProcessorsByHeader(
-            string acceptHeader, dynamic model, NancyContext context)
+            string acceptHeader, object model, NancyContext context)
         {
             foreach (var processor in this.processors)
             {
-                ProcessorMatch match = processor.CanProcess(acceptHeader, model, context);
+                var match = processor.CanProcess(acceptHeader, model, context);
 
                 if (match.ModelResult != MatchResult.NoMatch && match.RequestedContentTypeResult != MatchResult.NoMatch)
                 {
@@ -233,11 +233,11 @@
         /// <param name="negotiationContext">The negotiation context.</param>
         /// <param name="context">The context.</param>
         /// <returns>A <see cref="Response"/>.</returns>
-        private Response CreateResponse(IList<CompatibleHeader> compatibleHeaders,
+        private async Task<Response> CreateResponse(IList<CompatibleHeader> compatibleHeaders,
                                         NegotiationContext negotiationContext,
                                         NancyContext context)
         {
-            var response = NegotiateResponse(compatibleHeaders, negotiationContext, context);
+            var response = await NegotiateResponse(compatibleHeaders, negotiationContext, context);
 
             if (response == null)
             {
@@ -272,7 +272,7 @@
         /// <param name="negotiationContext">The negotiation context.</param>
         /// <param name="context">The context.</param>
         /// <returns>Response.</returns>
-        private static Response NegotiateResponse(
+        private static async Task<Response> NegotiateResponse(
             IEnumerable<CompatibleHeader> compatibleHeaders,
             NegotiationContext negotiationContext,
             NancyContext context)
@@ -292,7 +292,7 @@
 
                     var mediaRangeModel = negotiationContext.GetModelForMediaRange(compatibleHeader.MediaRange);
 
-                    var response = prioritizedProcessor.Item1.Process(compatibleHeader.MediaRange, mediaRangeModel, context);
+                    var response = await prioritizedProcessor.Item1.Process(compatibleHeader.MediaRange, mediaRangeModel, context);
                     if (response != null)
                     {
                         return response;

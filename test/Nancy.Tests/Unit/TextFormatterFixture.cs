@@ -2,7 +2,8 @@
 {
     using System.IO;
     using System.Text;
-
+    using System.Threading;
+    using System.Threading.Tasks;
     using FakeItEasy;
 
     using Xunit;
@@ -31,23 +32,23 @@
         }
 
         [Fact]
-        public void Should_set_return_valid_response_string()
+        public async Task Should_set_return_valid_response_string()
         {
             using (var stream = new MemoryStream())
             {
-                response.Contents(stream);
+                await response.Contents(stream, CancellationToken.None);
 
                 Encoding.UTF8.GetString(stream.ToArray()).ShouldEqual("sample text");
             }
         }
 
         [Fact]
-        public void Should_override_the_content_type()
+        public async Task Should_override_the_content_type()
         {
             var response = formatter.AsText("sample text", "text/cache-manifest");
             using (var stream = new MemoryStream())
             {
-                response.Contents(stream);
+                await response.Contents(stream, CancellationToken.None);
                 response.ContentType.ShouldEqual("text/cache-manifest; charset=utf-8");
             }
         }

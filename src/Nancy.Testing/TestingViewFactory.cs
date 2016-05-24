@@ -1,5 +1,6 @@
 ﻿namespace Nancy.Testing
 {
+    using System.Threading.Tasks;
     using Nancy.ViewEngines;
 
     /// <summary>
@@ -28,7 +29,7 @@
         /// <param name="model">The module path of the module that is rendering the view.</param>
         /// <param name="viewLocationContext">A <see cref="ViewLocationContext"/> instance, containing information about the context for which the view is being rendered.</param>
         /// <returns>A response.</returns>
-        public Response RenderView(string viewName, dynamic model, ViewLocationContext viewLocationContext)
+        public Task<Response> RenderView(string viewName, dynamic model, ViewLocationContext viewLocationContext)
         {
             // Intercept and store interesting stuff
             viewLocationContext.Context.Items[TestingViewContextKeys.VIEWMODEL] = model;

@@ -1,7 +1,7 @@
 ﻿namespace Nancy.Tests.Unit.ViewEngines
 {
     using System;
-
+    using System.Threading.Tasks;
     using FakeItEasy;
 
     using Nancy.Security;
@@ -83,7 +83,7 @@
         }
 
         [Fact]
-        public void Should_return_result_from_view_resolver_when_locating_view()
+        public async Task Should_return_result_from_view_resolver_when_locating_view()
         {
             // Given
             var viewResult = new ViewLocationResult(null, null, null, null);
@@ -92,7 +92,7 @@
             var context = new DefaultRenderContext(resolver, null, null, this.GetContext());
 
             // When
-            var result = context.LocateView(null, null);
+            var result = await context.LocateView(null, null);
 
             // Then
             result.ShouldBeSameAs(viewResult);

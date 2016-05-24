@@ -25,12 +25,15 @@
         	{
         	    return new Response
         	    {
-        	        Contents = s =>
+        	        Contents = async (s, ct) =>
         	        {
-        	            var writer = new StreamWriter(s);
-        	            writer.Write("Content");
-        	            writer.Flush();
-        	            throw new Exception("An error occured during content rendering");
+        	            using (var writer = new StreamWriter(s))
+                        {
+                            await writer.WriteAsync("Content");
+                            await writer.FlushAsync();
+
+                            throw new Exception("An error occured during content rendering");
+                        }
         	        }
         	    };
         	});

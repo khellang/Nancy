@@ -2,6 +2,7 @@ namespace Nancy.ViewEngines.DotLiquid.Tests
 {
     using System.Collections.Generic;
     using System.IO;
+    using System.Threading.Tasks;
     using Configuration;
     using FakeItEasy;
 
@@ -246,7 +247,7 @@ namespace Nancy.ViewEngines.DotLiquid.Tests
 
             var renderContext = A.Fake<IRenderContext>();
             A.CallTo(() => renderContext.LocateView(A<string>.Ignored, A<object>.Ignored))
-                .ReturnsLazily(x => viewLocator.LocateView(x.Arguments.Get<string>(0), null));
+                .ReturnsLazily(x => Task.FromResult(viewLocator.LocateView(x.Arguments.Get<string>(0), null)));
 
             context = new Context(new List<Hash>(), new Hash(),
                 Hash.FromAnonymousObject(new { nancy = renderContext }), false);

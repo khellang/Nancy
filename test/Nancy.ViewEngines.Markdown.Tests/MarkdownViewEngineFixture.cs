@@ -3,7 +3,8 @@
     using System;
     using System.IO;
     using System.Linq;
-
+    using System.Threading;
+    using System.Threading.Tasks;
     using FakeItEasy;
 
     using Nancy.Tests;
@@ -31,7 +32,7 @@
         }
 
         [Fact]
-        public void Should_return_Markdown()
+        public async Task Should_return_Markdown()
         {
             // Given
             const string markdown = @"#Header1
@@ -47,124 +48,124 @@ Hi there!
                 () => new StringReader(markdown)
             );
 
-            var html = this.viewEngine.ConvertMarkdown(location);
+            var html = await MarkDownViewEngine.ConvertMarkdown(location);
 
             var stream = new MemoryStream();
 
-            A.CallTo(() => this.renderContext.ViewCache.GetOrAdd(location, A<Func<ViewLocationResult, string>>.Ignored))
+            A.CallTo(() => this.renderContext.ViewCache.GetOrAdd(location, A<Func<ViewLocationResult, Task<string>>>.Ignored))
              .Returns(html);
 
             // When
-            var response = this.viewEngine.RenderView(location, null, this.renderContext);
-            response.Contents.Invoke(stream);
+            var response = await this.viewEngine.RenderView(location, null, this.renderContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
-            var result = ReadAll(stream);
+            var result = await ReadAll(stream);
             result.ShouldEqual(html);
         }
 
         [Fact]
-        public void Should_use_masterpage()
+        public async Task Should_use_masterpage()
         {
             //Given, When
-            var result = SetupCallAndReadViewWithMasterPage();
+            var result = await SetupCallAndReadViewWithMasterPage();
 
             //Then
             result.ShouldContain("What does Samuel L Jackson think?");
         }
 
         [Fact]
-        public void Should_render_model()
+        public async Task Should_render_model()
         {
             //Given, When
-            var result = SetupCallAndReadViewWithMasterPage(useModel: true);
+            var result = await SetupCallAndReadViewWithMasterPage(useModel: true);
 
             //Then
             result.ShouldContain("My name is Vincent Vega and I come from the model");
         }
 
         [Fact]
-        public void Should_handle_script_tags_before_body_tag()
+        public async Task Should_handle_script_tags_before_body_tag()
         {
             //Given, When
             const string expected = @"<script type='text/javascript' src='http://code.jquery.com/jquery-latest.min.js'></script>";
 
-            var result = SetupCallAndReadViewWithMasterPage();
+            var result = await SetupCallAndReadViewWithMasterPage();
 
             //Then
             result.ShouldContain(expected);
         }
 
         [Fact]
-        public void Should_convert_markdown_in_master()
+        public async Task Should_convert_markdown_in_master()
         {
             //Given, When
-            var result = SetupCallAndReadViewWithMasterPage();
+            var result = await SetupCallAndReadViewWithMasterPage();
 
             //Then
             result.ShouldContain("<h1>Markdown Engine Demo</h1>");
         }
 
         [Fact]
-        public void Should_convert_partial_views_with_markdown_content()
+        public async Task Should_convert_partial_views_with_markdown_content()
         {
             //Given, When
-            var result = SetupCallAndReadViewWithMasterPage();
+            var result = await SetupCallAndReadViewWithMasterPage();
 
             //Then
             result.ShouldContain("<h4>This is from a partial</h4>");
         }
 
         [Fact]
-        public void Should_convert_standalone()
+        public async Task Should_convert_standalone()
         {
             var location = FindView("standalone");
 
-            var result = this.viewEngine.ConvertMarkdown(location);
+            var result = await MarkDownViewEngine.ConvertMarkdown(location);
 
             Assert.True(result.StartsWith("<!DOCTYPE html>"));
         }
 
         [Fact]
-        public void Should_convert_view()
+        public async Task Should_convert_view()
         {
             var location = FindView("home");
-            var result = this.viewEngine.ConvertMarkdown(location);
+            var result = await MarkDownViewEngine.ConvertMarkdown(location);
 
             result.ShouldStartWith("@Master['master']");
         }
 
         [Fact]
-        public void Should_convert_standalone_view_with_no_master()
+        public async Task Should_convert_standalone_view_with_no_master()
         {
             var location = FindView("standalone");
 
-            var html = this.viewEngine.ConvertMarkdown(location);
+            var html = await MarkDownViewEngine.ConvertMarkdown(location);
 
-            A.CallTo(() => this.renderContext.ViewCache.GetOrAdd(location, A<Func<ViewLocationResult, string>>.Ignored))
+            A.CallTo(() => this.renderContext.ViewCache.GetOrAdd(location, A<Func<ViewLocationResult, Task<string>>>.Ignored))
              .Returns(html);
 
             var stream = new MemoryStream();
 
-            var response = this.viewEngine.RenderView(location, null, this.renderContext);
+            var response = await this.viewEngine.RenderView(location, null, this.renderContext);
 
-            response.Contents.Invoke(stream);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
-            var result = ReadAll(stream);
+            var result = await ReadAll(stream);
 
             Assert.True(result.StartsWith("<!DOCTYPE html>"));
         }
 
         [Fact]
-        public void Should_be_able_to_use_HTML_MasterPage()
+        public async Task Should_be_able_to_use_HTML_MasterPage()
         {
             var location = FindView("viewwithhtmlmaster");
 
             var masterLocation = FindView("htmlmaster");
 
-            var html = this.viewEngine.ConvertMarkdown(location);
+            var html = await MarkDownViewEngine.ConvertMarkdown(location);
 
-            A.CallTo(() => this.renderContext.ViewCache.GetOrAdd(location, A<Func<ViewLocationResult, string>>.Ignored))
+            A.CallTo(() => this.renderContext.ViewCache.GetOrAdd(location, A<Func<ViewLocationResult, Task<string>>>.Ignored))
              .Returns(html);
 
             A.CallTo(() => this.renderContext.LocateView("htmlmaster", A<object>.Ignored)).Returns(masterLocation);
@@ -172,17 +173,17 @@ Hi there!
             var stream = new MemoryStream();
 
 
-            var response = this.viewEngine.RenderView(location, null, this.renderContext);
+            var response = await this.viewEngine.RenderView(location, null, this.renderContext);
 
-            response.Contents.Invoke(stream);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
-            var result = ReadAll(stream);
+            var result = await ReadAll(stream);
 
             result.ShouldStartWith("<!DOCTYPE html>");
             result.ShouldContain("<p>Bacon ipsum dolor");
         }
 
-        private string SetupCallAndReadViewWithMasterPage(bool useModel = false)
+        private async Task<string> SetupCallAndReadViewWithMasterPage(bool useModel = false)
         {
             var location = FindView("home");
 
@@ -190,9 +191,9 @@ Hi there!
 
             var partialLocation = FindView("partial");
 
-            var html = this.viewEngine.ConvertMarkdown(location);
+            var html = await MarkDownViewEngine.ConvertMarkdown(location);
 
-            A.CallTo(() => this.renderContext.ViewCache.GetOrAdd(location, A<Func<ViewLocationResult, string>>.Ignored))
+            A.CallTo(() => this.renderContext.ViewCache.GetOrAdd(location, A<Func<ViewLocationResult, Task<string>>>.Ignored))
              .Returns(html);
 
             A.CallTo(() => this.renderContext.LocateView("master", A<object>.Ignored)).Returns(masterLocation);
@@ -203,19 +204,20 @@ Hi there!
 
             var model = useModel ? new UserModel("Vincent", "Vega") : null;
 
-            var response = this.viewEngine.RenderView(location, model, this.renderContext);
+            var response = await this.viewEngine.RenderView(location, model, this.renderContext);
 
-            response.Contents.Invoke(stream);
+            await response.Contents.Invoke(stream, CancellationToken.None).ConfigureAwait(false);
 
-            return ReadAll(stream);
+            return await ReadAll(stream);
         }
 
-        private static string ReadAll(Stream stream)
+        private static async Task<string> ReadAll(Stream stream)
         {
             stream.Position = 0;
+
             using (var reader = new StreamReader(stream))
             {
-                return reader.ReadToEnd();
+                return await reader.ReadToEndAsync();
             }
         }
 

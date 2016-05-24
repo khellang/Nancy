@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Threading.Tasks;
     using Nancy.Configuration;
     using Nancy.ViewEngines;
 
@@ -41,7 +42,7 @@
         /// <param name="model">The model for the given media range.</param>
         /// <param name="context">The nancy context.</param>
         /// <returns>A <see cref="ProcessorMatch"/> result that determines the priority of the processor.</returns>
-        public ProcessorMatch CanProcess(MediaRange requestedMediaRange, dynamic model, NancyContext context)
+        public ProcessorMatch CanProcess(MediaRange requestedMediaRange, object model, NancyContext context)
         {
             var matchingContentType =
                 requestedMediaRange.Matches("text/html");
@@ -58,9 +59,9 @@
         /// <param name="model">The model for the given media range.</param>
         /// <param name="context">The nancy context.</param>
         /// <returns>A <see cref="Response"/> instance.</returns>
-        public Response Process(MediaRange requestedMediaRange, dynamic model, NancyContext context)
+        public async Task<Response> Process(MediaRange requestedMediaRange, object model, NancyContext context)
         {
-            var viewResponse = this.viewFactory.RenderView(context.NegotiationContext.ViewName, model, GetViewLocationContext(context));
+            var viewResponse = await this.viewFactory.RenderView(context.NegotiationContext.ViewName, model, GetViewLocationContext(context));
 
             return this.traceConfiguration.DisplayErrorTraces
                 ? new MaterialisingResponse(viewResponse)

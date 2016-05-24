@@ -3,12 +3,12 @@
     using System;
     using System.Collections.Generic;
     using System.IO;
-
+    using System.Threading.Tasks;
     using global::DotLiquid;
     using global::DotLiquid.Exceptions;
     using global::DotLiquid.FileSystems;
     using global::DotLiquid.NamingConventions;
-
+    using Nancy.Helpers;
     using Nancy.Responses;
 
     /// <summary>
@@ -67,7 +67,7 @@
         /// <param name="model">The model that should be passed into the view</param>
         /// <param name="renderContext"></param>
         /// <returns>A response</returns>
-        public Response RenderView(ViewLocationResult viewLocationResult, dynamic model, IRenderContext renderContext)
+        public async Task<Response> RenderView(ViewLocationResult viewLocationResult, dynamic model, IRenderContext renderContext)
         {
             Template parsed;
             Hash hashedModel;
@@ -76,12 +76,14 @@
             try
             {
                 // Set the parsed template
-                parsed = renderContext.ViewCache.GetOrAdd(
+                parsed = await renderContext.ViewCache.GetOrAdd(
                     viewLocationResult,
-                    x =>
+                    async x =>
                     {
                         using (var reader = viewLocationResult.Contents.Invoke())
-                            return Template.Parse(reader.ReadToEnd());
+                        {
+                            return Template.Parse(await reader.ReadToEndAsync());
+                        }
                     });
 
                 hashedModel = Hash.FromAnonymousObject(new
@@ -142,13 +144,15 @@
             }
 
             // Build the response
-            return new HtmlResponse(statusCode: status, contents: stream =>
+            return new HtmlResponse(statusCode: status, contents: (stream, ct) =>
             {
                 parsed.Render(stream, new RenderParameters
                 {
                     LocalVariables = hashedModel,
                     Registers = Hash.FromAnonymousObject(new { nancy = renderContext })
                 });
+
+                return TaskHelpers.CompletedTask;
             });
         }
 

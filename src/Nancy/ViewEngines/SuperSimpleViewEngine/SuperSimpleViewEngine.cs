@@ -48,9 +48,9 @@ namespace Nancy.ViewEngines.SuperSimpleViewEngine
         private const string ConditionalOpenSyntaxPattern = @"@If(?<Not>Not)?(?<Null>Null)?(?:\.(?<ModelSource>(Model|Context)+))?(?:\.(?<ParameterName>[a-zA-Z0-9-_]+))+;?";
         private const string ConditionalOpenInnerSyntaxPattern = @"@If(?:Not)?(?:Null)?(?:\.(?:(Model|Context)+))?(?:\.(?:[a-zA-Z0-9-_]+))+;?";
         private const string ConditionalCloseStynaxPattern = @"@EndIf;?";
-         
+
         private static readonly string ConditionalSubstituionPattern =
-            string.Format(@"{0}(?<Contents>:[.*]|(?>{2}(?<DEPTH>)|{1}(?<-DEPTH>)|.)*(?(DEPTH)(?!))){1}", 
+            string.Format(@"{0}(?<Contents>:[.*]|(?>{2}(?<DEPTH>)|{1}(?<-DEPTH>)|.)*(?(DEPTH)(?!))){1}",
                             ConditionalOpenSyntaxPattern,
                             ConditionalCloseStynaxPattern,
                             ConditionalOpenInnerSyntaxPattern);
@@ -140,7 +140,7 @@ namespace Nancy.ViewEngines.SuperSimpleViewEngine
         /// <param name="model">The model to user for rendering.</param>
         /// <param name="host">The view engine host</param>
         /// <returns>A string containing the expanded template.</returns>
-        public string Render(string template, dynamic model, IViewEngineHost host)
+        public string Render(string template, object model, IViewEngineHost host)
         {
             var output =
                 this.processors.Aggregate(template, (current, processor) => processor(current, model ?? new object(), host));
@@ -608,7 +608,7 @@ namespace Nancy.ViewEngines.SuperSimpleViewEngine
                 });
 
             result = AttributeValuePathExpansionRegEx.Replace(
-                result, 
+                result,
                 m =>
                 {
                     var attribute = m.Groups["Attribute"];
@@ -616,7 +616,7 @@ namespace Nancy.ViewEngines.SuperSimpleViewEngine
                     var path = m.Groups["Path"].Value;
 
                     var expandedPath = host.ExpandPath(path);
-                
+
                     return string.Format("{0}={1}{2}{1}", attribute, quote, expandedPath);
                 });
 
@@ -642,7 +642,7 @@ namespace Nancy.ViewEngines.SuperSimpleViewEngine
         /// <param name="model">The model.</param>
         /// <param name="host">View engine host</param>
         /// <returns>Template with partials expanded</returns>
-        private string PerformPartialSubstitutions(string template, dynamic model, IViewEngineHost host)
+        private string PerformPartialSubstitutions(string template, object model, IViewEngineHost host)
         {
             var result = template;
 
@@ -666,7 +666,7 @@ namespace Nancy.ViewEngines.SuperSimpleViewEngine
                         partialModel = modelValue.Item2;
                     }
 
-                    var partialTemplate = host.GetTemplate(partialViewName, partialModel);
+                    var partialTemplate = host.GetTemplate(partialViewName, partialModel).Result;
 
                     return this.Render(partialTemplate, partialModel, host);
                 });
@@ -690,7 +690,7 @@ namespace Nancy.ViewEngines.SuperSimpleViewEngine
                 return template;
             }
 
-            var masterTemplate = host.GetTemplate(masterPageName, model);
+            var masterTemplate = host.GetTemplate(masterPageName, model).Result;
             var sectionMatches = SectionContentsRegEx.Matches(template);
             var sections = sectionMatches.Cast<Match>().ToDictionary(sectionMatch => sectionMatch.Groups["SectionName"].Value, sectionMatch => sectionMatch.Groups["SectionContents"].Value);
 

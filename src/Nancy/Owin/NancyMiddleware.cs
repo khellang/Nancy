@@ -11,7 +11,6 @@
     using System.Threading;
     using System.Threading.Tasks;
 
-    using Nancy.Helpers;
     using Nancy.IO;
 
     using AppFunc = System.Func<System.Collections.Generic.IDictionary<string, object>,
@@ -68,7 +67,7 @@
                         var owinRequestProtocol = Get<string>(environment, "owin.RequestProtocol");
                         var owinCallCancelled = Get<CancellationToken>(environment, "owin.CallCancelled");
                         var owinRequestHost = GetHeader(owinRequestHeaders, "Host") ?? Dns.GetHostName();
-                        var owinUser = GetUser(environment); 
+                        var owinUser = GetUser(environment);
 
                         byte[] certificate = null;
                         if (options.EnableClientCertificates)
@@ -97,7 +96,7 @@
                             StoreEnvironment(environment, owinUser),
                             owinCallCancelled).ConfigureAwait(false);
 
-                        await RequestComplete(nancyContext, environment, options.PerformPassThrough, next).ConfigureAwait(false);
+                        await RequestComplete(nancyContext, environment, options.PerformPassThrough, next, owinCallCancelled).ConfigureAwait(false);
                     };
         }
 
@@ -108,15 +107,12 @@
         /// </summary>
         /// <param name="context">The Nancy Context.</param>
         /// <param name="environment">OWIN environment.</param>
+        /// <param name="performPassThrough">A predicate that will allow the caller to determine if the request passes through to the
+        ///     next stage in the owin pipeline.</param>
         /// <param name="next">The next stage in the OWIN pipeline.</param>
-        /// <param name="performPassThrough">A predicate that will allow the caller to determine if the request passes through to the 
-        /// next stage in the owin pipeline.</param>
+        /// <param name="owinCallCancelled"></param>
         /// <returns>Delegate</returns>
-        private static Task RequestComplete(
-            NancyContext context,
-            IDictionary<string, object> environment,
-            Func<NancyContext, bool> performPassThrough,
-            AppFunc next)
+        private static async Task RequestComplete(NancyContext context, IDictionary<string, object> environment, Func<NancyContext, bool> performPassThrough, AppFunc next, CancellationToken cancellationToken)
         {
             var owinResponseHeaders = Get<IDictionary<string, string[]>>(environment, "owin.ResponseHeaders");
             var owinResponseBody = Get<Stream>(environment, "owin.ResponseBody");
@@ -152,16 +148,14 @@
                         .ToArray();
                 }
 
-                nancyResponse.Contents(owinResponseBody);
+                await nancyResponse.Contents(owinResponseBody, cancellationToken);
             }
             else
             {
-                return next(environment);
+                await next(environment);
             }
 
             context.Dispose();
-
-            return TaskHelpers.CompletedTask;
         }
 
         private static T Get<T>(IDictionary<string, object> env, string key)

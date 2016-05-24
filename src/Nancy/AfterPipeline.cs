@@ -7,8 +7,6 @@ namespace Nancy
 
     public class AfterPipeline : AsyncNamedPipelineBase<Func<NancyContext, CancellationToken, Task>, Action<NancyContext>>
     {
-        private static readonly Task completeTask = TaskHelpers.CompletedTask;
-
         public AfterPipeline()
         {
         }

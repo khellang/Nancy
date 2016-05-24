@@ -1,5 +1,7 @@
 ﻿namespace Nancy.ViewEngines
 {
+    using System.Threading.Tasks;
+
     /// <summary>
     /// Defines the functionality used by a <see cref="INancyModule"/> to render a view to the response.
     /// </summary>
@@ -12,6 +14,6 @@
         /// <param name="model">The module path of the module that is rendering the view.</param>
         /// <param name="viewLocationContext">A <see cref="ViewLocationContext"/> instance, containing information about the context for which the view is being rendered.</param>
         /// <returns>A response.</returns>
-        Response RenderView(string viewName, dynamic model, ViewLocationContext viewLocationContext);
+        Task<Response> RenderView(string viewName, dynamic model, ViewLocationContext viewLocationContext);
     }
 }

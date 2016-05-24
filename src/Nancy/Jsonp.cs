@@ -73,7 +73,7 @@
             // http://stackoverflow.com/questions/111302/best-content-type-to-serve-jsonp
             context.Response.ContentType = string.Concat("application/javascript", Encoding);
 
-            context.Response.Contents = stream =>
+            context.Response.Contents = async (stream, ct) =>
             {
                 // disposing of stream is handled elsewhere
                 var writer = new StreamWriter(stream)
@@ -81,9 +81,9 @@
                     AutoFlush = true
                 };
 
-                writer.Write("{0}(", callback);
-                original(stream);
-                writer.Write(");");
+                await writer.WriteAsync(string.Format("{0}(", callback));
+                await original(stream, ct);
+                await writer.WriteAsync(");");
             };
         }
     }

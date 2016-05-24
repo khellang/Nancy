@@ -2,7 +2,8 @@
 {
     using System.IO;
     using System.Text;
-
+    using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Responses;
 
     using Xunit;
@@ -10,7 +11,7 @@
     public class TextResponseFixture
     {
         [Fact]
-        public void Should_copy_text_when_body_invoked()
+        public async Task Should_copy_text_when_body_invoked()
         {
             // Given
             var text
@@ -22,14 +23,14 @@
             var outputStream = new MemoryStream();
 
             // When
-            response.Contents.Invoke(outputStream);
+            await response.Contents.Invoke(outputStream, CancellationToken.None);
 
             // Then
             outputStream.ToArray().ShouldEqualSequence(Encoding.UTF8.GetBytes(text));
         }
 
         [Fact]
-        public void Should_be_0_when_text_is_null_and_body_invoked()
+        public async Task Should_be_0_when_text_is_null_and_body_invoked()
         {
             // Given
             string text
@@ -41,14 +42,14 @@
             var outputStream = new MemoryStream();
 
             // When
-            response.Contents.Invoke(outputStream);
+            await response.Contents.Invoke(outputStream, CancellationToken.None);
 
             // then
             outputStream.ToArray().Length.ShouldEqual(0);
         }
 
         [Fact]
-        public void Should_be_0_when_text_is_empty_and_body_invoked()
+        public async Task Should_be_0_when_text_is_empty_and_body_invoked()
         {
             // Given
             string text
@@ -60,14 +61,14 @@
             var outputStream = new MemoryStream();
 
             // When
-            response.Contents.Invoke(outputStream);
+            await response.Contents.Invoke(outputStream, CancellationToken.None);
 
             // then
             outputStream.ToArray().Length.ShouldEqual(0);
         }
 
         [Fact]
-        public void Should_set_content_type_to_text_plain()
+        public async Task Should_set_content_type_to_text_plain()
         {
             // Given
             string text =
@@ -79,14 +80,14 @@
             var outputStream = new MemoryStream();
 
             // When
-            response.Contents.Invoke(outputStream);
+            await response.Contents.Invoke(outputStream, CancellationToken.None);
 
             // Then
             response.ContentType.ShouldEqual("text/plain; charset=utf-8");
         }
 
         [Fact]
-        public void Should_override_content_type()
+        public async Task Should_override_content_type()
         {
             // Given
             const string text = "sample text";
@@ -97,14 +98,14 @@
             var outputStream = new MemoryStream();
 
             // When
-            response.Contents.Invoke(outputStream);
+            await response.Contents.Invoke(outputStream, CancellationToken.None);
 
             // Then
             response.ContentType.ShouldEqual("text/cache-manifest; charset=utf-8");
         }
 
         [Fact]
-        public void Should_include_webname_for_custom_encoding()
+        public async Task Should_include_webname_for_custom_encoding()
         {
             // Given
             string text =
@@ -116,7 +117,7 @@
             var outputStream = new MemoryStream();
 
             // When
-            response.Contents.Invoke(outputStream);
+            await response.Contents.Invoke(outputStream, CancellationToken.None);
 
             // Then
             response.ContentType.ShouldEqual("text/plain; charset=utf-16");

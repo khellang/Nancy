@@ -3,7 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
-
+    using System.Threading.Tasks;
     using MarkdownSharp;
 
     using Nancy.ViewEngines.SuperSimpleViewEngine;
@@ -52,31 +52,34 @@
         /// <param name="templateName">Name/location of the template</param>
         /// <param name="model">Model to use to locate the template via conventions</param>
         /// <returns>Contents of the template, or null if not found</returns>
-        public string GetTemplate(string templateName, object model)
+        public async Task<string> GetTemplate(string templateName, object model)
         {
-            var viewLocationResult = this.renderContext.LocateView(templateName, model);
+            var viewLocationResult = await this.renderContext.LocateView(templateName, model);
 
             if (viewLocationResult == null)
             {
                 return "[ERR!]";
             }
 
-            string templateContent;
             using (var reader = viewLocationResult.Contents.Invoke())
-                templateContent = reader.ReadToEnd();
-
-            if (viewLocationResult.Name.ToLower() == "master" && validExtensions.Any(x => x.Equals(viewLocationResult.Extension, StringComparison.OrdinalIgnoreCase)))
             {
-                return MarkdownViewengineRender.RenderMasterPage(templateContent);
-            }
+                var templateContent = await reader.ReadToEndAsync();
 
-            if (!validExtensions.Any(x => x.Equals(viewLocationResult.Extension, StringComparison.OrdinalIgnoreCase)))
-            {
-                using (var reader = viewLocationResult.Contents.Invoke())
-                    return reader.ReadToEnd();
-            }
+                if (viewLocationResult.Name.ToLower() == "master" && this.validExtensions.Any(x => x.Equals(viewLocationResult.Extension, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return MarkdownViewengineRender.RenderMasterPage(templateContent);
+                }
 
-            return parser.Transform(templateContent);
+                if (!this.validExtensions.Any(x => x.Equals(viewLocationResult.Extension, StringComparison.OrdinalIgnoreCase)))
+                {
+                    using (var innerReader = viewLocationResult.Contents.Invoke())
+                    {
+                        return await innerReader.ReadToEndAsync();
+                    }
+                }
+
+                return this.parser.Transform(templateContent);
+            }
         }
 
         /// <summary>

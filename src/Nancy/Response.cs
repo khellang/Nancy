@@ -5,7 +5,7 @@ namespace Nancy
     using System.Diagnostics;
     using System.IO;
     using System.Linq;
-    using System.Runtime.CompilerServices;
+    using System.Threading;
     using System.Threading.Tasks;
 
     using Nancy.Cookies;
@@ -21,7 +21,7 @@ namespace Nancy
         /// <summary>
         /// Null object representing no body
         /// </summary>
-        public static Action<Stream> NoBody = s => { };
+        public static Func<Stream, CancellationToken, Task> NoBody = (s, ct) => TaskHelpers.CompletedTask;
 
         private string contentType;
 
@@ -35,11 +35,6 @@ namespace Nancy
             this.Headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             this.StatusCode = HttpStatusCode.OK;
             this.Cookies = new List<INancyCookie>(2);
-        }
-
-        public TaskAwaiter<Response> GetAwaiter()
-        {
-            return Task.FromResult(this).GetAwaiter();
         }
 
         /// <summary>
@@ -58,7 +53,7 @@ namespace Nancy
         /// </summary>
         /// <value>An <see cref="Action{T}"/> delegate, containing the code that will render contents to the response stream.</value>
         /// <remarks>The host of Nancy will pass in the output stream after the response has been handed back to it by Nancy.</remarks>
-        public Action<Stream> Contents { get; set; }
+        public Func<Stream, CancellationToken, Task> Contents { get; set; }
 
         /// <summary>
         /// Gets the collection of HTTP response headers that should be sent back to the client.
@@ -90,7 +85,7 @@ namespace Nancy
         /// </summary>
         /// <param name="context">Nancy context</param>
         /// <returns>Task for completion/erroring</returns>
-        public virtual Task PreExecute(NancyContext context)
+        public virtual Task PreExecute(NancyContext context, CancellationToken cancellationToken)
         {
             return TaskHelpers.CompletedTask;
         }
@@ -134,7 +129,7 @@ namespace Nancy
         /// </summary>
         /// <param name="streamFactory">The <see cref="Action{T}"/> instance that is being cast from.</param>
         /// <returns>A <see cref="Response"/> instance.</returns>
-        public static implicit operator Response(Action<Stream> streamFactory)
+        public static implicit operator Response(Func<Stream, CancellationToken, Task> streamFactory)
         {
             return new Response { Contents = streamFactory };
         }
@@ -155,12 +150,16 @@ namespace Nancy
         /// </summary>
         /// <param name="contents">The string containing the content.</param>
         /// <returns>A response action that will write the content of the string to the response stream.</returns>
-        protected static Action<Stream> GetStringContents(string contents)
+        protected static Func<Stream, CancellationToken, Task> GetStringContents(string contents)
         {
-            return stream =>
+            return (stream, ct) =>
             {
-                var writer = new StreamWriter(stream) { AutoFlush = true };
-                writer.Write(contents);
+                var writer = new StreamWriter(stream)
+                {
+                    AutoFlush = true
+                };
+
+                return writer.WriteAsync(contents);
             };
         }
 

@@ -3,7 +3,8 @@
     using System;
     using System.Collections.Generic;
     using System.IO;
-
+    using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Cookies;
 
     /// <summary>
@@ -18,7 +19,7 @@
         /// <param name="contents">Response body delegate - defaults to empty if null</param>
         /// <param name="headers">Headers if required</param>
         /// <param name="cookies">Cookies if required</param>
-        public HtmlResponse(HttpStatusCode statusCode = HttpStatusCode.OK, Action<Stream> contents = null, IDictionary<string, string> headers = null, IEnumerable<INancyCookie> cookies = null)
+        public HtmlResponse(HttpStatusCode statusCode = HttpStatusCode.OK, Func<Stream, CancellationToken, Task> contents = null, IDictionary<string, string> headers = null, IEnumerable<INancyCookie> cookies = null)
         {
             this.ContentType = "text/html";
             this.StatusCode = statusCode;

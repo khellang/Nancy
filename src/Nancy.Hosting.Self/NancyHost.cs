@@ -7,6 +7,7 @@
     using System.Linq;
     using System.Net;
     using System.Security.Principal;
+    using System.Threading;
     using System.Threading.Tasks;
     using Nancy.Bootstrapper;
     using Nancy.Extensions;
@@ -129,8 +130,10 @@
                 {
                     while(!this.stop)
                     {
-                        HttpListenerContext context = await listener.GetContextAsync();
-                        Process(context);
+                        var context = await this.listener.GetContextAsync().ConfigureAwait(false);
+
+                        // TODO: Where to get CancellationToken from?
+                        this.Process(context, CancellationToken.None).ConfigureAwait(false);
                     }
                 }
                 catch(Exception ex)
@@ -158,7 +161,7 @@
                 throw new InvalidOperationException("Unable to configure namespace reservation");
             }
 
-            if (!TryStartListener())
+            if (!this.TryStartListener())
             {
                 throw new InvalidOperationException("Unable to start listener");
             }
@@ -208,8 +211,8 @@
 
         private string GetUser()
         {
-            return !string.IsNullOrWhiteSpace(this.configuration.UrlReservations.User) 
-                ? this.configuration.UrlReservations.User 
+            return !string.IsNullOrWhiteSpace(this.configuration.UrlReservations.User)
+                ? this.configuration.UrlReservations.User
                 : WindowsIdentity.GetCurrent().Name;
         }
 
@@ -309,7 +312,7 @@
             return new Uri(request.Url.GetLeftPart(UriPartial.Authority));
         }
 
-        private void ConvertNancyResponseToResponse(Response nancyResponse, HttpListenerResponse response)
+        private Task ConvertNancyResponseToResponse(Response nancyResponse, HttpListenerResponse response, CancellationToken cancellationToken)
         {
             foreach (var header in nancyResponse.Headers)
             {
@@ -338,28 +341,26 @@
 
             if (configuration.AllowChunkedEncoding)
             {
-                OutputWithDefaultTransferEncoding(nancyResponse, response);
+                return OutputWithDefaultTransferEncoding(nancyResponse, response, cancellationToken);
             }
-            else
-            {
-                OutputWithContentLength(nancyResponse, response);
-            }
+
+            return OutputWithContentLength(nancyResponse, response, cancellationToken);
         }
 
-        private static void OutputWithDefaultTransferEncoding(Response nancyResponse, HttpListenerResponse response)
+        private static async Task OutputWithDefaultTransferEncoding(Response nancyResponse, HttpListenerResponse response, CancellationToken cancellationToken)
         {
             using (var output = response.OutputStream)
             {
-                nancyResponse.Contents.Invoke(output);
+                await nancyResponse.Contents.Invoke(output, cancellationToken).ConfigureAwait(false);
             }
         }
 
-        private static void OutputWithContentLength(Response nancyResponse, HttpListenerResponse response)
+        private static async Task OutputWithContentLength(Response nancyResponse, HttpListenerResponse response, CancellationToken cancellationToken)
         {
             byte[] buffer;
             using (var memoryStream = new MemoryStream())
             {
-                nancyResponse.Contents.Invoke(memoryStream);
+                await nancyResponse.Contents.Invoke(memoryStream, cancellationToken).ConfigureAwait(false);
                 buffer = memoryStream.ToArray();
             }
 
@@ -407,16 +408,17 @@
                 contentLength;
         }
 
-        private async Task Process(HttpListenerContext ctx)
+        private async Task Process(HttpListenerContext ctx, CancellationToken cancellationToken)
         {
             try
             {
                 var nancyRequest = this.ConvertRequestToNancyRequest(ctx.Request);
+
                 using (var nancyContext = await this.engine.HandleRequest(nancyRequest).ConfigureAwait(false))
                 {
                     try
                     {
-                        this.ConvertNancyResponseToResponse(nancyContext.Response, ctx.Response);
+                        await this.ConvertNancyResponseToResponse(nancyContext.Response, ctx.Response, cancellationToken).ConfigureAwait(false);
                     }
                     catch (Exception e)
                     {

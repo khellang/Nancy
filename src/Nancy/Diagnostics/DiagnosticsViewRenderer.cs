@@ -2,6 +2,8 @@ namespace Nancy.Diagnostics
 {
     using System.IO;
     using System.Linq;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Configuration;
     using Nancy.Localization;
     using Nancy.Responses;
@@ -35,7 +37,7 @@ namespace Nancy.Diagnostics
         /// </summary>
         /// <param name="name">The name of the view to render.</param>
         /// <returns>A <see cref="Response"/> of the rendered view.</returns>
-        public Response this[string name]
+        public Task<Response> this[string name]
         {
             get { return this.RenderView(name, null, this.context); }
         }
@@ -51,10 +53,10 @@ namespace Nancy.Diagnostics
             get { return RenderView(name, model, this.context); }
         }
 
-        private Response RenderView(string name, dynamic model, NancyContext context)
+        private async Task<Response> RenderView(string name, dynamic model, NancyContext context)
         {
             var fullName = string.Concat(name, ".sshtml");
-            var stream = GetBodyStream(fullName);
+            var stream = await GetBodyStream(fullName).ConfigureAwait(false);
             var location = GetViewLocationResult(fullName, stream);
             var cache = new DefaultViewCache(this.environment);
 
@@ -63,16 +65,16 @@ namespace Nancy.Diagnostics
             var renderContext =
                 new DefaultRenderContext(ViewResolver, cache, new DummyTextResource(), new ViewLocationContext() { Context = context });
 
-            return Engine.RenderView(location, model, renderContext);
+            return await Engine.RenderView(location, model, renderContext);
         }
 
-        private static Stream GetBodyStream(string name)
+        private static async Task<Stream> GetBodyStream(string name)
         {
             var view = new EmbeddedFileResponse(typeof(DiagnosticsViewRenderer).Assembly, "Nancy.Diagnostics.Views", name);
 
             var stream = new MemoryStream();
 
-            view.Contents.Invoke(stream);
+            await view.Contents.Invoke(stream, CancellationToken.None).ConfigureAwait(false);
             stream.Position = 0;
             return stream;
         }
@@ -95,11 +97,11 @@ namespace Nancy.Diagnostics
             /// <param name="model">The model that will be used with the view.</param>
             /// <param name="viewLocationContext">A <see cref="ViewLocationContext"/> instance, containing information about the context for which the view is being located.</param>
             /// <returns>A <see cref="ViewLocationResult"/> instance if the view could be found, otherwise <see langword="null"/>.</returns>
-            public ViewLocationResult GetViewLocation(string viewName, dynamic model, ViewLocationContext viewLocationContext)
+            public async Task<ViewLocationResult> GetViewLocation(string viewName, dynamic model, ViewLocationContext viewLocationContext)
             {
                 var fullName = string.Concat(viewName, ".sshtml");
 
-                var stream = GetBodyStream(fullName);
+                var stream = await GetBodyStream(fullName).ConfigureAwait(false);
 
                 return GetViewLocationResult(fullName, stream);
             }

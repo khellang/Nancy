@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using System.IO;
     using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Configuration;
     using Nancy.Json;
     using Nancy.Responses;
@@ -186,7 +187,7 @@
 
             public IEnumerable<string> Extensions { get; set; }
 
-            public void Serialize<TModel>(MediaRange mediaRange, TModel model, Stream outputStream)
+            public Task Serialize<TModel>(MediaRange mediaRange, TModel model, Stream outputStream, CancellationToken cancellationToken)
             {
                 throw new System.NotImplementedException();
             }
@@ -208,7 +209,7 @@
 
             public IEnumerable<string> Extensions { get; set; }
 
-            public void Serialize<TModel>(MediaRange mediaRange, TModel model, Stream outputStream)
+            public Task Serialize<TModel>(MediaRange mediaRange, TModel model, Stream outputStream, CancellationToken cancellationToken)
             {
                 throw new System.NotImplementedException();
             }

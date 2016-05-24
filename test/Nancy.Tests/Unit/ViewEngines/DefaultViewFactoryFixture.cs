@@ -4,11 +4,13 @@ namespace Nancy.Tests.Unit.ViewEngines
     using System.Dynamic;
     using System.IO;
     using System.Linq;
-
+    using System.Threading;
+    using System.Threading.Tasks;
     using FakeItEasy;
 
     using Nancy.Conventions;
     using Nancy.Diagnostics;
+    using Nancy.Helpers;
     using Nancy.Tests.Fakes;
     using Nancy.ViewEngines;
 
@@ -124,79 +126,79 @@ namespace Nancy.Tests.Unit.ViewEngines
         }
 
         [Fact]
-        public void Should_throw_argumentnullexception_when_rendering_view_and_viewlocationcontext_is_null()
+        public async Task Should_throw_argumentnullexception_when_rendering_view_and_viewlocationcontext_is_null()
         {
             // Given
             var factory = this.CreateFactory(null);
 
             // When
-            var exception = Record.Exception(() => factory.RenderView("viewName", new object(), null));
+            var exception = await Record.ExceptionAsync(() => factory.RenderView("viewName", new object(), null));
 
             // Then
             exception.ShouldBeOfType<ArgumentNullException>();
         }
 
         [Fact]
-        public void Should_throw_argumentexception_when_rendering_view_and_view_name_is_empty_and_model_is_null()
+        public async Task Should_throw_argumentexception_when_rendering_view_and_view_name_is_empty_and_model_is_null()
         {
             // Given
             var factory = this.CreateFactory(null);
 
             // When
-            var exception = Record.Exception(() => factory.RenderView(string.Empty, null, this.viewLocationContext));
+            var exception = await Record.ExceptionAsync(() => factory.RenderView(string.Empty, null, this.viewLocationContext));
 
             // Then
             exception.ShouldBeOfType<ArgumentException>();
         }
 
         [Fact]
-        public void Should_throw_argumentexception_when_rendering_view_and_both_viewname_and_model_is_null()
+        public async Task Should_throw_argumentexception_when_rendering_view_and_both_viewname_and_model_is_null()
         {
             // Given
             var factory = this.CreateFactory(null);
 
             // When
-            var exception = Record.Exception(() => factory.RenderView(null, null, this.viewLocationContext));
+            var exception = await Record.ExceptionAsync(() => factory.RenderView(null, null, this.viewLocationContext));
 
             // Then
             exception.ShouldBeOfType<ArgumentException>();
         }
 
         [Fact]
-        public void Should_retrieve_view_from_view_locator_using_provided_view_name()
+        public async Task Should_retrieve_view_from_view_locator_using_provided_view_name()
         {
             // Given
             var factory = this.CreateFactory();
 
             // When
-            Record.Exception(() => factory.RenderView("viewname.html", null, this.viewLocationContext));
+            await factory.RenderView("viewname.html", null, this.viewLocationContext);
 
             // Then
             A.CallTo(() => this.resolver.GetViewLocation("viewname.html", A<object>.Ignored, A<ViewLocationContext>.Ignored)).MustHaveHappened();
         }
 
         [Fact]
-        public void Should_retrieve_view_from_view_locator_using_provided_model()
+        public async Task Should_retrieve_view_from_view_locator_using_provided_model()
         {
             // Given
             var factory = this.CreateFactory();
             var model = new object();
 
             // When
-            Record.Exception(() => factory.RenderView(null, model, this.viewLocationContext));
+            await factory.RenderView(null, model, this.viewLocationContext);
 
             // Then
             A.CallTo(() => this.resolver.GetViewLocation(A<string>.Ignored, model, A<ViewLocationContext>.Ignored)).MustHaveHappened();
         }
 
         [Fact]
-        public void Should_retrieve_view_from_view_locator_using_provided_module_path()
+        public async Task Should_retrieve_view_from_view_locator_using_provided_module_path()
         {
             // Given
             var factory = this.CreateFactory();
             var model = new object();
 
-            var viewContext = 
+            var viewContext =
                 new ViewLocationContext
                 {
                     Context = new NancyContext
@@ -210,7 +212,7 @@ namespace Nancy.Tests.Unit.ViewEngines
                 };
 
             // When
-            Record.Exception(() => factory.RenderView(null, model, viewContext));
+            await factory.RenderView(null, model, viewContext);
 
             // Then
             A.CallTo(() => this.resolver.GetViewLocation(A<string>.Ignored, A<object>.Ignored, A<ViewLocationContext>.That.Matches(x => x.ModulePath.Equals("/bar")))).MustHaveHappened();
@@ -263,14 +265,14 @@ namespace Nancy.Tests.Unit.ViewEngines
         }
 
         [Fact]
-        public void Should_return_response_from_invoked_engine()
+        public async Task Should_return_response_from_invoked_engine()
         {
             // Given
             var viewEngines = new[] {
               A.Fake<IViewEngine>(),
             };
 
-            Action<Stream> actionReturnedFromEngine = x => { };
+            Func<Stream, CancellationToken, Task> actionReturnedFromEngine = (s, ct) => TaskHelpers.CompletedTask;
 
             A.CallTo(() => viewEngines[0].Extensions).Returns(new[] { "html" });
             A.CallTo(() => viewEngines[0].RenderView(A<ViewLocationResult>.Ignored, null, A<IRenderContext>.Ignored)).Returns(actionReturnedFromEngine);
@@ -281,14 +283,14 @@ namespace Nancy.Tests.Unit.ViewEngines
             var factory = this.CreateFactory(viewEngines);
 
             // When
-            var response = factory.RenderView("foo", null, this.viewLocationContext);
+            var response = await factory.RenderView("foo", null, this.viewLocationContext);
 
             // Then
             response.Contents.ShouldBeSameAs(actionReturnedFromEngine);
         }
 
         [Fact]
-        public void Should_return_empty_action_when_view_engine_throws_exception()
+        public async Task Should_return_empty_action_when_view_engine_throws_exception()
         {
             var viewEngines = new[] {
               A.Fake<IViewEngine>(),
@@ -304,15 +306,15 @@ namespace Nancy.Tests.Unit.ViewEngines
             var factory = this.CreateFactory(viewEngines);
 
             // When
-            var response = factory.RenderView("foo", null, this.viewLocationContext);
-            response.Contents.Invoke(stream);
+            var response = await factory.RenderView("foo", null, this.viewLocationContext);
+            await response.Contents.Invoke(stream, CancellationToken.None);
 
             // Then
             stream.Length.ShouldEqual(0L);
         }
 
         [Fact]
-        public void Should_invoke_view_engine_with_model()
+        public async Task Should_invoke_view_engine_with_model()
         {
             // Given
             var viewEngines = new[] {
@@ -329,14 +331,14 @@ namespace Nancy.Tests.Unit.ViewEngines
             var factory = this.CreateFactory(viewEngines);
 
             // When
-            factory.RenderView("foo", model, this.viewLocationContext);
+            await factory.RenderView("foo", model, this.viewLocationContext);
 
             // Then
             A.CallTo(() => viewEngines[0].RenderView(A<ViewLocationResult>.Ignored, model, A<IRenderContext>.Ignored)).MustHaveHappened();
         }
 
         [Fact]
-        public void Should_covert_anonymoustype_model_to_expandoobject_before_invoking_view_engine()
+        public async Task Should_covert_anonymoustype_model_to_expandoobject_before_invoking_view_engine()
         {
             // Given
             var viewEngines = new[] {
@@ -352,14 +354,14 @@ namespace Nancy.Tests.Unit.ViewEngines
             var factory = this.CreateFactory(viewEngines);
 
             // When
-            factory.RenderView("foo", model, this.viewLocationContext);
+            await factory.RenderView("foo", model, this.viewLocationContext);
 
             // Then
             A.CallTo(() => viewEngines[0].RenderView(A<ViewLocationResult>.Ignored, A<object>.That.Matches(x => x.GetType().Equals(typeof(ExpandoObject))), A<IRenderContext>.Ignored)).MustHaveHappened();
         }
 
         [Fact]
-        public void Should_transfer_anonymoustype_model_members_to_expandoobject_members_before_invoking_view_engines()
+        public async Task Should_transfer_anonymoustype_model_members_to_expandoobject_members_before_invoking_view_engines()
         {
             // Given
             var viewEngines = new[] {
@@ -373,52 +375,52 @@ namespace Nancy.Tests.Unit.ViewEngines
             var factory = this.CreateFactory(viewEngines);
 
             // When
-            factory.RenderView("foo", model, this.viewLocationContext);
+            await factory.RenderView("foo", model, this.viewLocationContext);
 
             // Then
             ((string)viewEngines[0].Model.Name).ShouldEqual("Nancy");
         }
 
         [Fact]
-        public void Should_use_the_name_of_the_model_type_as_view_name_when_only_model_is_specified()
+        public async Task Should_use_the_name_of_the_model_type_as_view_name_when_only_model_is_specified()
         {
             // Given
             var factory = this.CreateFactory();
 
             // When
-            Record.Exception(() => factory.RenderView(null, new object(), this.viewLocationContext));
+            await factory.RenderView(null, new object(), this.viewLocationContext);
 
             // Then
             A.CallTo(() => this.resolver.GetViewLocation("Object", A<object>.Ignored, A<ViewLocationContext>.Ignored)).MustHaveHappened();
         }
 
         [Fact]
-        public void Should_use_the_name_of_the_model_type_without_model_suffix_as_view_name_when_only_model_is_specified()
+        public async Task Should_use_the_name_of_the_model_type_without_model_suffix_as_view_name_when_only_model_is_specified()
         {
             // Given
             var factory = this.CreateFactory();
 
             // When
-            Record.Exception(() => factory.RenderView(null, new ViewModel(), this.viewLocationContext));
+            await factory.RenderView(null, new ViewModel(), this.viewLocationContext);
 
             // Then
             A.CallTo(() => this.resolver.GetViewLocation("View", A<object>.Ignored, A<ViewLocationContext>.Ignored)).MustHaveHappened();
         }
 
         [Fact]
-        public void Should_throw_when_view_could_not_be_located()
+        public async Task Should_throw_when_view_could_not_be_located()
         {
             var factory = this.CreateFactory();
 
-            A.CallTo(() => this.resolver.GetViewLocation(A<string>.Ignored, A<object>.Ignored, A<ViewLocationContext>.Ignored)).Returns(null);
+            A.CallTo(() => this.resolver.GetViewLocation(A<string>.Ignored, A<object>.Ignored, A<ViewLocationContext>.Ignored)).Returns(Task.FromResult<ViewLocationResult>(null));
 
-            var result = Record.Exception(() => factory.RenderView("foo", null, this.viewLocationContext));
+            var result = await Record.ExceptionAsync(() => factory.RenderView("foo", null, this.viewLocationContext));
 
             result.ShouldBeOfType<ViewNotFoundException>();
         }
 
         [Fact]
-        public void Should_provide_view_name_and_available_extensions_in_not_found_exception()
+        public async Task Should_provide_view_name_and_available_extensions_in_not_found_exception()
         {
             var viewEngines = new[] {
               A.Fake<IViewEngine>(),
@@ -427,30 +429,30 @@ namespace Nancy.Tests.Unit.ViewEngines
             A.CallTo(() => viewEngines[0].Extensions).Returns(new[] { "html" });
             A.CallTo(() => viewEngines[1].Extensions).Returns(new[] { "sshtml" });
             var factory = this.CreateFactory(viewEngines);
-            A.CallTo(() => this.resolver.GetViewLocation(A<string>.Ignored, A<object>.Ignored, A<ViewLocationContext>.Ignored)).Returns(null);
+            A.CallTo(() => this.resolver.GetViewLocation(A<string>.Ignored, A<object>.Ignored, A<ViewLocationContext>.Ignored)).Returns(Task.FromResult<ViewLocationResult>(null));
 
-            var result = Record.Exception(() => factory.RenderView("foo", null, this.viewLocationContext)) as ViewNotFoundException;
+            var result = await Record.ExceptionAsync(() => factory.RenderView("foo", null, this.viewLocationContext)) as ViewNotFoundException;
 
             result.AvailableViewEngineExtensions.ShouldEqualSequence(new[] { "html", "sshtml" });
             result.ViewName.ShouldEqual("foo");
         }
 
         [Fact]
-        public void Should_provide_list_of_inspected_view_locations_in_not_found_exception()
+        public async Task Should_provide_list_of_inspected_view_locations_in_not_found_exception()
         {
             var viewEngines = new[] {
               A.Fake<IViewEngine>(),
               A.Fake<IViewEngine>(),
             };
             A.CallTo(() => viewEngines[0].Extensions).Returns(new[] { "html" });
-            A.CallTo(() => viewEngines[1].Extensions).Returns(new[] { "sshtml" });            
-             
+            A.CallTo(() => viewEngines[1].Extensions).Returns(new[] { "sshtml" });
+
             var conventions = new Func<string, dynamic, ViewLocationContext, string>[] {(a,b,c) => "baz"};
             var factory = new DefaultViewFactory(this.resolver, viewEngines, this.renderContextFactory, new ViewLocationConventions(conventions), this.rootPathProvider);
-            
-            A.CallTo(() => this.resolver.GetViewLocation(A<string>.Ignored, A<object>.Ignored, A<ViewLocationContext>.Ignored)).Returns(null);
 
-            var result = (Record.Exception(() => factory.RenderView("foo", null, this.viewLocationContext))) as ViewNotFoundException;
+            A.CallTo(() => this.resolver.GetViewLocation(A<string>.Ignored, A<object>.Ignored, A<ViewLocationContext>.Ignored)).Returns(Task.FromResult<ViewLocationResult>(null));
+
+            var result = (await Record.ExceptionAsync(() => factory.RenderView("foo", null, this.viewLocationContext))) as ViewNotFoundException;
 
             result.AvailableViewEngineExtensions.ShouldEqualSequence(new[] { "html", "sshtml" });
             result.ViewName.ShouldEqual("foo");

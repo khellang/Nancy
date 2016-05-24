@@ -2,6 +2,8 @@
 {
     using System.Collections.Generic;
     using System.IO;
+    using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Configuration;
     using Nancy.Responses;
     using Xunit;
@@ -111,7 +113,7 @@
         }
 
         [Fact]
-        public void Should_return_file_unchanged()
+        public async Task Should_return_file_unchanged()
         {
             // Given
             var path = Path.Combine(this.GetLocation(), this.filePath);
@@ -119,7 +121,7 @@
             var response = new GenericFileResponse(this.filePath, this.fileContentType, this.context);
 
             // When
-            var result = GetResponseContents(response);
+            var result = await GetResponseContents(response);
 
             // Then
             result.ShouldEqualSequence(expected);
@@ -160,10 +162,10 @@
             response.Headers["Content-Length"].ShouldEqual(expected);
         }
 
-        private static IEnumerable<byte> GetResponseContents(Response response)
+        private static async Task<IEnumerable<byte>> GetResponseContents(Response response)
         {
             var ms = new MemoryStream();
-            response.Contents(ms);
+            await response.Contents(ms, CancellationToken.None);
             ms.Flush();
 
             return ms.ToArray();

@@ -3,9 +3,9 @@
     using System;
     using System.Collections.Generic;
     using System.IO;
-
+    using System.Threading.Tasks;
     using global::Nustache.Core;
-
+    using Nancy.Helpers;
     using Nancy.Responses;
 
     /// <summary>
@@ -31,14 +31,16 @@
         {
         }
 
-        private Template GetOrCompileTemplate(ViewLocationResult viewLocationResult, IRenderContext renderContext)
+        private async Task<Template> GetOrCompileTemplate(ViewLocationResult viewLocationResult, IRenderContext renderContext)
         {
-            var viewFactory = renderContext.ViewCache.GetOrAdd(
+            var viewFactory = await renderContext.ViewCache.GetOrAdd(
                 viewLocationResult,
                 x =>
                 {
                     using (var reader = x.Contents.Invoke())
-                        return this.GetCompiledTemplate<dynamic>(reader);
+                    {
+                        return Task.FromResult(this.GetCompiledTemplate<dynamic>(reader));
+                    }
                 });
 
             var view = viewFactory.Invoke();
@@ -51,9 +53,7 @@
             var template = new Template();
             template.Load(reader);
 
-            return () =>{
-                return template;
-            };
+            return () => template;
         }
 
         /// <summary>
@@ -63,21 +63,22 @@
         /// <param name="model">The model that should be passed into the view</param>
         /// <param name="renderContext"></param>
         /// <returns>A response</returns>
-        public Response RenderView(ViewLocationResult viewLocationResult, dynamic model, IRenderContext renderContext)
+        public Task<Response> RenderView(ViewLocationResult viewLocationResult, object model, IRenderContext renderContext)
         {
-            return new HtmlResponse
+            return Task.FromResult<Response>(new HtmlResponse
             {
-                Contents = stream =>
+                Contents = async (stream, ct) =>
                 {
                     var template =
-                        this.GetOrCompileTemplate(viewLocationResult, renderContext);
+                        await this.GetOrCompileTemplate(viewLocationResult, renderContext);
 
                     var writer =
                         new StreamWriter(stream);
 
-                    template.Render(model, writer, new TemplateLocator(name => this.GetPartial(renderContext, name, model)));
+                    template.Render(model, writer,
+                        new TemplateLocator(name => this.GetPartial(renderContext, name, model)));
                 }
-            };
+            });
         }
 
         private Template GetPartial(IRenderContext renderContext, string name, dynamic model)

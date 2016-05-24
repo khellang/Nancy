@@ -8,6 +8,7 @@
     using System.Linq;
     using System.Reflection;
     using System.Text.RegularExpressions;
+    using System.Threading.Tasks;
     using System.Web.Razor;
     using Microsoft.CodeAnalysis;
     using Microsoft.CodeAnalysis.CSharp;
@@ -67,7 +68,7 @@
         /// <param name="model">The model that should be passed into the view</param>
         /// <param name="renderContext">The render context.</param>
         /// <returns>A response.</returns>
-        public Response RenderView(ViewLocationResult viewLocationResult, dynamic model, IRenderContext renderContext)
+        public Task<Response> RenderView(ViewLocationResult viewLocationResult, object model, IRenderContext renderContext)
         {
             return RenderView(viewLocationResult, model, renderContext, false);
         }
@@ -80,55 +81,59 @@
         /// <param name="renderContext">The render context.</param>
         /// <param name="isPartial">Used by HtmlHelpers to declare a view as partial</param>
         /// <returns>A response.</returns>
-        public Response RenderView(ViewLocationResult viewLocationResult, dynamic model, IRenderContext renderContext, bool isPartial)
+        public Task<Response> RenderView(ViewLocationResult viewLocationResult, dynamic model, IRenderContext renderContext, bool isPartial)
         {
-            Assembly referencingAssembly = null;
 
-            var response = new HtmlResponse();
-
-            response.Contents = stream =>
+            return Task.FromResult<Response>(new HtmlResponse
             {
-                var writer =
-                    new StreamWriter(stream);
-
-                var view = this.GetViewInstance(viewLocationResult, renderContext, model);
-
-                view.ExecuteView(null, null);
-
-                var body = view.Body;
-                var sectionContents = view.SectionContents;
-
-                var layout = view.HasLayout ? view.Layout : GetViewStartLayout(model, renderContext, referencingAssembly, isPartial);
-
-                var root = string.IsNullOrWhiteSpace(layout);
-
-                while (!root)
+                Contents = async (stream, ct) =>
                 {
-                    var viewLocation =
-                        renderContext.LocateView(layout, model);
+                    var writer =
+                        new StreamWriter(stream);
 
-                    if (viewLocation == null)
+                    var view = await this.GetViewInstance(viewLocationResult, renderContext, model);
+
+                    view.ExecuteView(null, null);
+
+                    var body = view.Body;
+                    var sectionContents = view.SectionContents;
+
+                    Assembly referencingAssembly = null;
+
+                    var layout = view.HasLayout
+                        ? view.Layout
+                        : this.GetViewStartLayout(model, renderContext, referencingAssembly, isPartial);
+
+                    var root = string.IsNullOrWhiteSpace(layout);
+
+                    while (!root)
                     {
-                        throw new InvalidOperationException("Unable to locate layout: " + layout);
+                        var viewLocation =
+                            renderContext.LocateView(layout, model);
+
+                        if (viewLocation == null)
+                        {
+                            throw new InvalidOperationException("Unable to locate layout: " + layout);
+                        }
+
+                        view = await this.GetViewInstance(viewLocation, renderContext, model);
+
+                        view.ExecuteView(body, sectionContents);
+
+                        body = view.Body;
+                        sectionContents = view.SectionContents;
+
+                        layout = view.HasLayout
+                            ? view.Layout
+                            : this.GetViewStartLayout(model, renderContext, referencingAssembly, isPartial);
+
+                        root = !view.HasLayout;
                     }
 
-                    view = this.GetViewInstance(viewLocation, renderContext, model);
-
-                    view.ExecuteView(body, sectionContents);
-
-                    body = view.Body;
-                    sectionContents = view.SectionContents;
-
-                    layout = view.HasLayout ? view.Layout : GetViewStartLayout(model, renderContext, referencingAssembly, isPartial);
-
-                    root = !view.HasLayout;
+                    await writer.WriteAsync(body).ConfigureAwait(false);
+                    await writer.FlushAsync().ConfigureAwait(false);
                 }
-
-                writer.Write(body);
-                writer.Flush();
-            };
-
-            return response;
+            });
         }
 
         private string GetViewStartLayout(dynamic model, IRenderContext renderContext, Assembly referencingAssembly, bool isPartial)
@@ -180,15 +185,13 @@
             }
         }
 
-        private Func<INancyRazorView> GetCompiledViewFactory(TextReader reader, Type passedModelType, ViewLocationResult viewLocationResult)
+        private Func<Task<INancyRazorView>> GetCompiledViewFactory(TextReader reader, Type passedModelType, ViewLocationResult viewLocationResult)
         {
             var engine = new RazorTemplateEngine(this.viewRenderer.Host);
 
             var razorResult = engine.GenerateCode(reader, null, null, "roo");
 
-            var viewFactory = this.GenerateRazorViewFactory(this.viewRenderer, razorResult, passedModelType, viewLocationResult);
-
-            return viewFactory;
+            return this.GenerateRazorViewFactory(this.viewRenderer, razorResult, passedModelType, viewLocationResult);
         }
 
         private static Type GetModelTypeFromGeneratedCode(GeneratorResults generatorResults, Type passedModelType)
@@ -198,7 +201,7 @@
                 ?? typeof(object);
         }
 
-        private Func<INancyRazorView> GenerateRazorViewFactory(IRazorViewRenderer renderer, GeneratorResults generatorResults, Type passedModelType, ViewLocationResult viewLocationResult)
+        private Func<Task<INancyRazorView>> GenerateRazorViewFactory(IRazorViewRenderer renderer, GeneratorResults generatorResults, Type passedModelType, ViewLocationResult viewLocationResult)
         {
             var modelType = GetModelTypeFromGeneratedCode(generatorResults, passedModelType);
             var sourceCode = string.Empty;
@@ -229,24 +232,24 @@
 
                 if (!result.Success)
                 {
-                    return () => new NancyRazorErrorView(BuildErrorMessage(result, viewLocationResult, sourceCode), this.traceConfiguration);
+                    return async () => new NancyRazorErrorView(await BuildErrorMessage(result, viewLocationResult, sourceCode), this.traceConfiguration);
                 }
 
                 ms.Seek(0, SeekOrigin.Begin);
                 var viewAssembly = Assembly.Load(ms.ToArray());
 
-                return () => (INancyRazorView) Activator.CreateInstance(viewAssembly.GetType("RazorOutput.RazorView"));
+                return () => Task.FromResult((INancyRazorView) Activator.CreateInstance(viewAssembly.GetType("RazorOutput.RazorView")));
             }
         }
 
-        private static string BuildErrorMessage(EmitResult result, ViewLocationResult viewLocationResult, string sourceCode)
+        private static async Task<string> BuildErrorMessage(EmitResult result, ViewLocationResult viewLocationResult, string sourceCode)
         {
             var failures = result.Diagnostics
                 .Where(diagnostic => diagnostic.IsWarningAsError || diagnostic.Severity == DiagnosticSeverity.Error)
                 .ToArray();
 
             var fullTemplateName = viewLocationResult.Location + "/" + viewLocationResult.Name + "." + viewLocationResult.Extension;
-            var templateLines = GetViewBodyLines(viewLocationResult);
+            var templateLines = await GetViewBodyLines(viewLocationResult);
             var compilationSource = GetCompilationSource(sourceCode);
             var errorMessages = BuildErrorMessages(failures, templateLines, compilationSource);
 
@@ -352,17 +355,17 @@
                 : string.Empty;
         }
 
-        private static string[] GetViewBodyLines(ViewLocationResult viewLocationResult)
+        private static async Task<string[]> GetViewBodyLines(ViewLocationResult viewLocationResult)
         {
             var templateLines = new List<string>();
             using (var templateReader = viewLocationResult.Contents.Invoke())
             {
-                var currentLine = templateReader.ReadLine();
+                var currentLine = await templateReader.ReadLineAsync();
                 while (currentLine != null)
                 {
                     templateLines.Add(HttpUtility.HtmlEncode(currentLine));
 
-                    currentLine = templateReader.ReadLine();
+                    currentLine = await templateReader.ReadLineAsync();
                 }
             }
             return templateLines.ToArray();
@@ -383,26 +386,26 @@
             razorResult.GeneratedCode.Namespaces[0].Imports.Add(new CodeNamespaceImport(modelType.Namespace));
         }
 
-        private INancyRazorView GetOrCompileView(ViewLocationResult viewLocationResult, IRenderContext renderContext, Type passedModelType)
+        private async Task<INancyRazorView> GetOrCompileView(ViewLocationResult viewLocationResult, IRenderContext renderContext, Type passedModelType)
         {
-            var viewFactory = renderContext.ViewCache.GetOrAdd(
+            var viewFactory = await renderContext.ViewCache.GetOrAdd(
                 viewLocationResult,
                 x =>
                 {
                     using (var reader = x.Contents.Invoke())
-                        return this.GetCompiledViewFactory(reader, passedModelType, viewLocationResult);
+                    {
+                        return Task.FromResult(this.GetCompiledViewFactory(reader, passedModelType, viewLocationResult));
+                    }
                 });
 
-            var view = viewFactory.Invoke();
-
-            return view;
+            return await viewFactory.Invoke();
         }
 
-        private INancyRazorView GetViewInstance(ViewLocationResult viewLocationResult, IRenderContext renderContext, dynamic model)
+        private async Task<INancyRazorView> GetViewInstance(ViewLocationResult viewLocationResult, IRenderContext renderContext, dynamic model)
         {
             var modelType = (model == null) ? typeof(object) : model.GetType();
 
-            var view = this.GetOrCompileView(viewLocationResult, renderContext, modelType);
+            var view = await this.GetOrCompileView(viewLocationResult, renderContext, modelType);
 
             view.Initialize(this, renderContext, model);
 

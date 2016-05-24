@@ -4,16 +4,15 @@
     using System.Collections.Generic;
     using System.Globalization;
     using System.IO;
-    using System.Linq;
     using System.Text;
-
+    using System.Threading;
+    using System.Threading.Tasks;
     using Nancy.Configuration;
     using Nancy.Conventions;
     using Nancy.Diagnostics;
     using Nancy.Responses;
 
     using Xunit;
-    using Xunit.Extensions;
 
     public class StaticContentConventionBuilderFixture
     {
@@ -32,102 +31,102 @@
         }
 
         [Fact]
-        public void Should_retrieve_static_content_when_file_name_contains_url_encoded_spaces()
+        public async Task Should_retrieve_static_content_when_file_name_contains_url_encoded_spaces()
         {
             // Given
             // When
-            var result = GetStaticContent("css", "space%20in%20name.css");
+            var result = await this.GetStaticContent("css", "space%20in%20name.css");
 
             // Then
             result.ShouldEqual(StylesheetContents);
         }
 
         [Fact]
-        public void Should_retrieve_static_content_when_path_has_same_name_as_extension()
+        public async Task Should_retrieve_static_content_when_path_has_same_name_as_extension()
         {
             // Given
             // When
-            var result = GetStaticContent("css", "styles.css");
+            var result = await this.GetStaticContent("css", "styles.css");
 
             // Then
             result.ShouldEqual(StylesheetContents);
         }
 
         [Fact]
-        public void Should_retrieve_static_content_when_virtual_directory_name_exists_in_static_route()
+        public async Task Should_retrieve_static_content_when_virtual_directory_name_exists_in_static_route()
         {
             // Given
             // When
-            var result = GetStaticContent("css", "strange-css-filename.css");
+            var result = await this.GetStaticContent("css", "strange-css-filename.css");
 
             // Then
             result.ShouldEqual(StylesheetContents);
         }
 
         [Fact]
-        public void Should_retrieve_static_content_when_path_is_nested()
+        public async Task Should_retrieve_static_content_when_path_is_nested()
         {
             // Given
             // When
-            var result = GetStaticContent("css/sub", "styles.css");
+            var result = await this.GetStaticContent("css/sub", "styles.css");
 
             // Then
             result.ShouldEqual(StylesheetContents);
         }
 
         [Fact]
-        public void Should_retrieve_static_content_when_path_contains_nested_folders_with_duplicate_name()
+        public async Task Should_retrieve_static_content_when_path_contains_nested_folders_with_duplicate_name()
         {
             // Given
             // When
-            var result = GetStaticContent("css/css", "styles.css");
+            var result = await this.GetStaticContent("css/css", "styles.css");
 
             // Then
             result.ShouldEqual(StylesheetContents);
         }
 
         [Fact]
-        public void Should_retrieve_static_content_when_filename_contains_dot()
+        public async Task Should_retrieve_static_content_when_filename_contains_dot()
         {
             // Given
             // When
-            var result = GetStaticContent("css", "dotted.filename.css");
+            var result = await this.GetStaticContent("css", "dotted.filename.css");
 
             // Then
             result.ShouldEqual(StylesheetContents);
         }
 
         [Fact]
-        public void Should_retrieve_static_content_when_path_contains_dot()
+        public async Task Should_retrieve_static_content_when_path_contains_dot()
         {
             // Given
             // When
-            var result = GetStaticContent("css/Sub.folder", "styles.css");
+            var result = await this.GetStaticContent("css/Sub.folder", "styles.css");
 
             // Then
             result.ShouldEqual(StylesheetContents);
         }
 
         [Fact]
-        public void Should_skip_the_request_if_resource_is_outside_the_content_folder()
+        public async Task Should_skip_the_request_if_resource_is_outside_the_content_folder()
         {
             // Given
             // When
-            var result = GetStaticContent("css", "../../outside/styles.css");
+            var result = await this.GetStaticContent("css", "../../outside/styles.css");
 
             // Then
             result.ShouldEqual("Static content returned an invalid response of (null)");
         }
 
         [Fact]
-        public void Should_retrieve_static_content_when_root_is_relative_path()
+        public async Task Should_retrieve_static_content_when_root_is_relative_path()
         {
             // Given
             var resources = Path.Combine(directory, "Resources");
             var relativeRootFolder = Path.Combine(resources, @"../");
 
             // When
-            var result = GetStaticContent("css", "styles.css", relativeRootFolder);
+            var result = await this.GetStaticContent("css", "styles.css", relativeRootFolder);
 
             // Then
             result.ShouldEqual(StylesheetContents);
@@ -221,13 +220,13 @@
         }
 
         [Fact]
-        public void Not_modified_response_should_have_no_body()
+        public async Task Not_modified_response_should_have_no_body()
         {
             var initialResult = this.GetStaticContentResponse("css/css", "styles.css");
             var etag = initialResult.Headers["ETag"];
             var headers = new Dictionary<string, IEnumerable<string>> { { "If-None-Match", new[] { etag } } };
 
-            var result = this.GetStaticContent("css/css", "styles.css", headers: headers);
+            var result = await this.GetStaticContent("css/css", "styles.css", headers: headers);
 
             result.ShouldEqual(string.Empty);
         }
@@ -237,22 +236,19 @@
         [InlineData('<')]
         [InlineData('>')]
         [InlineData('|')]
-        public void Should_not_throw_exception_when_path_contains_invalid_filename_character(char invalidCharacter)
+        public async Task Should_not_throw_exception_when_path_contains_invalid_filename_character(char invalidCharacter)
         {
             // Given
             var fileName = string.Format("name{0}.ext", invalidCharacter);
 
             // When
-            var exception = Record.Exception(() =>
-                {
-                    this.GetStaticContent("css/css", fileName);
-                });
+            var exception = await Record.ExceptionAsync(() => this.GetStaticContent("css/css", fileName));
 
             // Then
             exception.ShouldBeNull();
         }
 
-        private string GetStaticContent(string virtualDirectory, string requestedFilename, string root = null, IDictionary<string, IEnumerable<string>> headers = null)
+        private async Task<string> GetStaticContent(string virtualDirectory, string requestedFilename, string root = null, IDictionary<string, IEnumerable<string>> headers = null)
         {
             var response = this.GetStaticContentResponse(virtualDirectory, requestedFilename, root, headers);
 
@@ -262,7 +258,7 @@
             {
                 using (var stream = new MemoryStream())
                 {
-                    fileResponse.Contents(stream);
+                    await fileResponse.Contents(stream, CancellationToken.None);
                     return Encoding.UTF8.GetString(stream.GetBuffer(), 0, (int)stream.Length);
                 }
             }
@@ -272,7 +268,7 @@
 
         private Response GetStaticContentResponse(string virtualDirectory, string requestedFilename, string root = null, IDictionary<string, IEnumerable<string>> headers = null)
         {
-            var context = GetContext(virtualDirectory, requestedFilename, headers);
+            var context = this.GetContext(virtualDirectory, requestedFilename, headers);
 
             var resolver = GetResolver(virtualDirectory);
 

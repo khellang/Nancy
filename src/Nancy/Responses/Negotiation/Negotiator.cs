@@ -1,8 +1,6 @@
 namespace Nancy.Responses.Negotiation
 {
     using System;
-    using System.Runtime.CompilerServices;
-    using System.Threading.Tasks;
 
     public class Negotiator : IHideObjectMembers
     {
@@ -23,11 +21,6 @@ namespace Nancy.Responses.Negotiation
             }
 
             this.NegotiationContext = context.NegotiationContext;
-        }
-
-        public TaskAwaiter<Negotiator> GetAwaiter()
-        {
-            return Task.FromResult(this).GetAwaiter();
         }
 
         /// <summary>

@@ -193,7 +193,7 @@
         }
 
         [Fact]
-        public void Should_allow_favicon_override()
+        public async Task Should_allow_favicon_override()
         {
             // Given
             var favicon = new byte[] { 1, 2, 3 };
@@ -209,7 +209,10 @@
             result.ShouldNotBeNull();
             result.Result.ContentType.ShouldEqual("image/vnd.microsoft.icon");
             result.Result.StatusCode = HttpStatusCode.OK;
-            GetBodyBytes(result.Result).SequenceEqual(favicon).ShouldBeTrue();
+
+            var bodyBytes = await GetBodyBytes(result.Result, CancellationToken.None);
+
+            bodyBytes.SequenceEqual(favicon).ShouldBeTrue();
         }
 
         [Fact]
@@ -284,11 +287,11 @@
             uninitialiedBootstrapper.GetRequestStartupTasksCalled.ShouldBeFalse();
         }
 
-        private static IEnumerable<byte> GetBodyBytes(Response response)
+        private static async Task<IEnumerable<byte>> GetBodyBytes(Response response, CancellationToken cancellationToken)
         {
             using (var contentsStream = new MemoryStream())
             {
-                response.Contents.Invoke(contentsStream);
+                await response.Contents.Invoke(contentsStream, cancellationToken).ConfigureAwait(false);
 
                 return contentsStream.ToArray();
             }
